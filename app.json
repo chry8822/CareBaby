@@ -3,6 +3,7 @@
     "name": "CareBaby",
     "slug": "CareBaby",
     "version": "1.0.0",
+    "scheme": "carebaby",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -20,11 +21,30 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "edgeToEdgeEnabled": false
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#FFB6C1"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "아기 데이터 보호를 위해 Face ID를 사용합니다."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
     }
   }
 }
