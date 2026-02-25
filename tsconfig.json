@@ -2,7 +2,6 @@
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
     "strict": true,
-<<<<<<< HEAD
     "skipLibCheck": true,
     "customConditions": ["react-native"],
     "paths": {
@@ -26,19 +25,12 @@
       ],
       "@hooks/*": [
         "./hooks/*"
-=======
-    "baseUrl": ".",
-    "paths": {
-      "@/*": [
-        "./src/*"
->>>>>>> a88fc5b1eea3bf532c87154847c9ba43940e9b42
       ]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
-<<<<<<< HEAD
     ".expo/types/**/*.d.ts",
     "expo-env.d.ts",
     ".expo/types/**/*.ts"
@@ -47,12 +39,5 @@
     "node_modules",
     "babel.config.js",
     "metro.config.js"
-=======
-    "src/**/*",
-    "app/**/*",
-    "nativewind-env.d.ts",
-    ".expo/types/**/*.ts",
-    "expo-env.d.ts"
->>>>>>> a88fc5b1eea3bf532c87154847c9ba43940e9b42
   ]
 }
