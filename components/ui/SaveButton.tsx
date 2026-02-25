@@ -1,15 +1,21 @@
 import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { colors, typography, borderRadius } from '../../constants/theme';
+import { colors, typography, borderRadius, shadows } from '../../constants/theme';
 
 interface SaveButtonProps {
   onPress: () => void;
   isLoading: boolean;
   label?: string;
+  color?: string;
 }
 
-export const SaveButton = ({ onPress, isLoading, label = '기록 저장' }: SaveButtonProps) => (
+export const SaveButton = ({
+  onPress,
+  isLoading,
+  label = '기록 저장',
+  color = colors.accent,
+}: SaveButtonProps) => (
   <TouchableOpacity
-    style={[styles.button, isLoading && styles.disabled]}
+    style={[styles.button, { backgroundColor: color }, isLoading && styles.disabled]}
     onPress={onPress}
     disabled={isLoading}
     activeOpacity={0.85}
@@ -25,10 +31,10 @@ export const SaveButton = ({ onPress, isLoading, label = '기록 저장' }: Save
 const styles = StyleSheet.create({
   button: {
     height: 52,
-    backgroundColor: colors.accent,
     borderRadius: borderRadius.base,
     justifyContent: 'center',
     alignItems: 'center',
+    ...shadows.card,
   },
   disabled: {
     opacity: 0.6,
@@ -36,6 +42,7 @@ const styles = StyleSheet.create({
   label: {
     ...typography.bodySemiBold,
     color: colors.white,
-    fontSize: 16,
+    fontSize: 15,
+    letterSpacing: 0.2,
   },
 });

@@ -6,13 +6,13 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Animated,
+  Easing,
   StyleSheet,
   type ViewProps,
 } from 'react-native';
 import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
 import type { ModalVariant, ModalPrimaryAction, ModalSecondaryAction } from '../../stores/uiStore';
 
-// Animated.View에 children prop을 허용하는 타입 (React 19 strict 모드 대응)
 type AnimatedViewProps = ViewProps & { children?: React.ReactNode };
 const AnimatedView = Animated.View as React.ComponentType<AnimatedViewProps>;
 
@@ -38,33 +38,64 @@ export const AppModal = ({
   onClose,
   closeOnBackdrop = true,
 }: AppModalProps) => {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.92)).current;
+  // 배경 딤처리: 독립적으로 fade
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  // 카드: opacity + translateY
+  const cardOpacity = useRef(new Animated.Value(0)).current;
+  const cardTranslateY = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     if (visible) {
+      // 초기값 리셋
+      backdropOpacity.setValue(0);
+      cardOpacity.setValue(0);
+      cardTranslateY.setValue(20);
+
       Animated.parallel([
-        Animated.timing(opacity, {
+        // 배경: 부드럽게 fade in
+        Animated.timing(backdropOpacity, {
           toValue: 1,
-          duration: 200,
+          duration: 220,
+          easing: Easing.out(Easing.ease),
           useNativeDriver: true,
         }),
-        Animated.spring(scale, {
+        // 카드: 위로 올라오며 fade in
+        Animated.timing(cardOpacity, {
           toValue: 1,
-          tension: 60,
-          friction: 8,
+          duration: 200,
+          easing: Easing.out(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.spring(cardTranslateY, {
+          toValue: 0,
+          tension: 70,
+          friction: 14,
           useNativeDriver: true,
         }),
       ]).start();
     } else {
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 150,
-        useNativeDriver: true,
-      }).start();
-      scale.setValue(0.92);
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 180,
+          easing: Easing.in(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(cardOpacity, {
+          toValue: 0,
+          duration: 150,
+          easing: Easing.in(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(cardTranslateY, {
+          toValue: 10,
+          duration: 150,
+          easing: Easing.in(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]).start();
     }
-  }, [visible, opacity, scale]);
+  }, [visible, backdropOpacity, cardOpacity, cardTranslateY]);
 
   const handleBackdropPress = () => {
     if (closeOnBackdrop && onClose) {
@@ -80,50 +111,68 @@ export const AppModal = ({
       statusBarTranslucent
       onRequestClose={onClose}
     >
-      <TouchableWithoutFeedback onPress={handleBackdropPress}>
-        <AnimatedView style={[styles.backdrop, { opacity }]}>
-          <TouchableWithoutFeedback>
-            <AnimatedView style={[styles.card, { transform: [{ scale }] }]}>
-              {title ? <Text style={styles.title}>{title}</Text> : null}
-              {message ? <Text style={styles.message}>{message}</Text> : null}
-              {children}
-              {(primaryAction || secondaryAction) ? (
-                <View style={styles.actions}>
-                  {secondaryAction ? (
-                    <TouchableOpacity
-                      style={styles.secondaryButton}
-                      onPress={secondaryAction.onPress}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.secondaryText}>{secondaryAction.label}</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                  {primaryAction ? (
-                    <TouchableOpacity
-                      style={[
-                        styles.primaryButton,
-                        primaryAction.variant === 'danger' && styles.dangerButton,
-                      ]}
-                      onPress={primaryAction.onPress}
-                      activeOpacity={0.85}
-                    >
-                      <Text style={styles.primaryText}>{primaryAction.label}</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
+      {/* 배경 딤처리 레이어 */}
+      <AnimatedView
+        style={[styles.backdrop, { opacity: backdropOpacity }]}
+        pointerEvents="box-none"
+      >
+        <TouchableWithoutFeedback onPress={handleBackdropPress}>
+          <View style={StyleSheet.absoluteFillObject} />
+        </TouchableWithoutFeedback>
+      </AnimatedView>
+
+      {/* 카드 레이어 */}
+      <View style={styles.centered} pointerEvents="box-none">
+        <AnimatedView
+          style={[
+            styles.card,
+            {
+              opacity: cardOpacity,
+              transform: [{ translateY: cardTranslateY }],
+            },
+          ]}
+        >
+          {title ? <Text style={styles.title}>{title}</Text> : null}
+          {message ? <Text style={styles.message}>{message}</Text> : null}
+          {children}
+          {(primaryAction || secondaryAction) ? (
+            <View style={styles.actions}>
+              {secondaryAction ? (
+                <TouchableOpacity
+                  style={styles.secondaryButton}
+                  onPress={secondaryAction.onPress}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.secondaryText}>{secondaryAction.label}</Text>
+                </TouchableOpacity>
               ) : null}
-            </AnimatedView>
-          </TouchableWithoutFeedback>
+              {primaryAction ? (
+                <TouchableOpacity
+                  style={[
+                    styles.primaryButton,
+                    primaryAction.variant === 'danger' && styles.dangerButton,
+                  ]}
+                  onPress={primaryAction.onPress}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.primaryText}>{primaryAction.label}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
         </AnimatedView>
-      </TouchableWithoutFeedback>
+      </View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
   backdrop: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: colors.overlay,
+  },
+  centered: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
@@ -137,12 +186,14 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.h2,
+    fontSize: 17,
     color: colors.text.primary,
     marginBottom: spacing.sm,
   },
   message: {
     ...typography.bodyRegular,
     color: colors.text.secondary,
+    lineHeight: 22,
     marginBottom: spacing.lg,
   },
   actions: {

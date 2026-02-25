@@ -111,7 +111,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // TOKEN_REFRESH_FAILED: 네트워크 오류 등으로 토큰 갱신 실패.
+      // 이미 저장된 세션이 있으면 유지하고, 없을 때만 로그아웃 처리.
+      if (event === 'TOKEN_REFRESH_FAILED') {
+        const currentUser = get().user;
+        if (!currentUser) set({ profile: null });
+        return;
+      }
+
       set({ user: session?.user ?? null });
       if (session?.user) {
         get().fetchProfile();

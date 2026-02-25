@@ -12,6 +12,7 @@ import { FeedingForm } from './FeedingForm';
 import { SleepForm } from './SleepForm';
 import { DiaperForm } from './DiaperForm';
 import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
+import { PageHeader } from '../ui/PageHeader';
 
 type TabKey = 'feeding' | 'sleep' | 'diaper' | 'growth' | 'health' | 'more';
 
@@ -28,6 +29,15 @@ const TABS: Tab[] = [
   { key: 'health', label: '건강' },
   { key: 'more', label: '더보기' },
 ];
+
+const TAB_COLORS: Record<TabKey, string> = {
+  feeding: colors.activity.nursing,
+  sleep: colors.activity.sleep,
+  diaper: colors.activity.diaper,
+  growth: colors.activity.growth,
+  health: colors.accent,
+  more: colors.text.secondary,
+};
 
 const ComingSoonPlaceholder = ({
   tabKey,
@@ -135,9 +145,13 @@ export const RecordScreen = ({ initialTab }: RecordScreenProps) => {
 
   const renderTab = ({ item }: { item: Tab }) => {
     const isActive = activeTab === item.key;
+    const tabColor = TAB_COLORS[item.key];
     return (
       <TouchableOpacity
-        style={[styles.tab, isActive && styles.tabActive]}
+        style={[
+          styles.tab,
+          isActive && { backgroundColor: tabColor },
+        ]}
         onPress={() => setActiveTab(item.key)}
         activeOpacity={0.7}
       >
@@ -167,9 +181,7 @@ export const RecordScreen = ({ initialTab }: RecordScreenProps) => {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>기록하기</Text>
-      </View>
+      <PageHeader title="기록하기" subtitle="오늘의 육아를 기록해요" />
 
       <View style={styles.tabBarWrapper}>
         <FlatList
@@ -193,15 +205,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg.primary,
   },
-  header: {
-    paddingHorizontal: spacing.screenPadding,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  headerTitle: {
-    ...typography.display,
-    color: colors.text.primary,
-  },
   tabBarWrapper: {
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
@@ -212,17 +215,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   tab: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md + 2,
+    paddingVertical: 7,
+    paddingHorizontal: spacing.md,
     borderRadius: borderRadius.full,
     backgroundColor: 'transparent',
   },
-  tabActive: {
-    backgroundColor: colors.accent,
-  },
   tabText: {
-    ...typography.bodySemiBold,
-    fontSize: 14,
+    fontSize: 13,
+    fontWeight: '500' as const,
     color: colors.text.secondary,
   },
   tabTextActive: {

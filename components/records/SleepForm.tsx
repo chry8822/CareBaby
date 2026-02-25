@@ -9,10 +9,8 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
-import DateTimePicker, {
-  type DateTimePickerEvent,
-} from '@react-native-community/datetimepicker';
 import { Play, Pause, Square, Clock, Edit2 } from 'lucide-react-native';
+import { WheelTimePicker } from '../ui/WheelTimePicker';
 import { useAuthStore } from '../../stores/authStore';
 import { useBabyStore } from '../../stores/babyStore';
 import { useRecordStore } from '../../stores/recordStore';
@@ -66,13 +64,9 @@ export const SleepForm = () => {
     reset();
   };
 
-  const handleTimePickerChange = (event: DateTimePickerEvent, date?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowTimePicker(false);
-    }
-    if (event.type === 'set' && date) {
-      setStartTime(date);
-    }
+  const handleTimeConfirm = (date: Date) => {
+    setStartTime(date);
+    setShowTimePicker(false);
   };
 
   const handleSave = async () => {
@@ -314,14 +308,14 @@ export const SleepForm = () => {
                   <Text style={styles.unitText}>분</Text>
                 </View>
               </View>
-              {showTimePicker && (
-                <DateTimePicker
-                  value={startTime}
-                  mode="time"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleTimePickerChange}
-                />
-              )}
+              <WheelTimePicker
+                visible={showTimePicker}
+                value={startTime}
+                onConfirm={handleTimeConfirm}
+                onCancel={() => setShowTimePicker(false)}
+                accentColor={SLEEP_COLOR}
+                title="시작 시간 선택"
+              />
             </View>
           )}
         </View>
@@ -343,7 +337,7 @@ export const SleepForm = () => {
         </View>
 
         <View style={styles.saveArea}>
-          <SaveButton onPress={handleSave} isLoading={isSaving} />
+          <SaveButton onPress={handleSave} isLoading={isSaving} color={SLEEP_COLOR} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

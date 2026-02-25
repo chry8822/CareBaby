@@ -1,8 +1,10 @@
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LogOut, User, Bell, Shield, ChevronRight } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
 import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 interface SettingsRowProps {
   icon: React.ReactNode;
@@ -12,12 +14,12 @@ interface SettingsRowProps {
 }
 
 const SettingsRow = ({ icon, label, onPress, danger = false }: SettingsRowProps) => (
-  <TouchableOpacity style={styles.row} onPress={onPress}>
+  <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
     <View style={styles.rowLeft}>
       {icon}
       <Text style={[styles.rowLabel, danger && styles.dangerText]}>{label}</Text>
     </View>
-    <ChevronRight color={colors.text.secondary} size={18} />
+    <ChevronRight color={colors.text.secondary} size={16} strokeWidth={1.8} />
   </TouchableOpacity>
 );
 
@@ -49,67 +51,68 @@ const SettingsScreen = () => {
   };
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      <Text style={styles.title}>설정</Text>
+    <SafeAreaView style={styles.safe} edges={['top']}>
+      <PageHeader title="설정" subtitle="계정 및 앱 설정" />
 
-      <View style={styles.profileCard}>
-        <View style={styles.avatar}>
-          <User color={colors.white} size={28} />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.profileCard}>
+          <View style={styles.avatar}>
+            <User color={colors.white} size={24} />
+          </View>
+          <View style={styles.profileInfo}>
+            <Text style={styles.profileName}>{profile?.display_name ?? '사용자'}</Text>
+            <Text style={styles.profileSub}>개인 계정</Text>
+          </View>
         </View>
-        <View>
-          <Text style={styles.profileName}>{profile?.display_name ?? '사용자'}</Text>
-          <Text style={styles.profileSub}>개인 계정</Text>
-        </View>
-      </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>계정</Text>
-        <View style={styles.card}>
-          <SettingsRow
-            icon={<Bell color={colors.text.secondary} size={20} />}
-            label="알림 설정"
-            onPress={() => {}}
-          />
-          <View style={styles.divider} />
-          <SettingsRow
-            icon={<Shield color={colors.text.secondary} size={20} />}
-            label="개인정보 처리방침"
-            onPress={() => {}}
-          />
+        <View style={styles.section}>
+          <Text style={styles.sectionLabel}>계정</Text>
+          <View style={styles.card}>
+            <SettingsRow
+              icon={<Bell color={colors.text.secondary} size={18} strokeWidth={1.8} />}
+              label="알림 설정"
+              onPress={() => {}}
+            />
+            <View style={styles.divider} />
+            <SettingsRow
+              icon={<Shield color={colors.text.secondary} size={18} strokeWidth={1.8} />}
+              label="개인정보 처리방침"
+              onPress={() => {}}
+            />
+          </View>
         </View>
-      </View>
 
-      <View style={styles.section}>
-        <View style={styles.card}>
-          <SettingsRow
-            icon={<LogOut color={colors.error} size={20} />}
-            label="로그아웃"
-            onPress={handleSignOut}
-            danger
-          />
+        <View style={styles.section}>
+          <View style={styles.card}>
+            <SettingsRow
+              icon={<LogOut color={colors.error} size={18} strokeWidth={1.8} />}
+              label="로그아웃"
+              onPress={handleSignOut}
+              danger
+            />
+          </View>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
     backgroundColor: colors.bg.primary,
   },
+  scroll: {
+    flex: 1,
+  },
   content: {
     padding: spacing.screenPadding,
-    paddingTop: 60,
-  },
-  title: {
-    ...typography.display,
-    color: colors.text.primary,
-    marginBottom: spacing.sectionGap,
+    paddingTop: spacing.xl,
+    paddingBottom: 40,
   },
   profileCard: {
     flexDirection: 'row',
@@ -122,12 +125,15 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   avatar: {
-    width: 56,
-    height: 56,
+    width: 48,
+    height: 48,
     borderRadius: borderRadius.full,
     backgroundColor: colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  profileInfo: {
+    flex: 1,
   },
   profileName: {
     ...typography.h2,
@@ -139,15 +145,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   section: {
-    marginBottom: spacing.sectionGap,
+    marginBottom: spacing.xl,
   },
-  sectionTitle: {
+  sectionLabel: {
     ...typography.caption,
     color: colors.text.secondary,
     marginBottom: spacing.sm,
-    marginLeft: spacing.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    marginLeft: spacing.xs,
+    letterSpacing: 0.3,
   },
   card: {
     backgroundColor: colors.bg.elevated,
@@ -159,7 +164,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: spacing.xl,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
   },
   rowLeft: {
     flexDirection: 'row',
@@ -176,7 +182,7 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: colors.border,
-    marginLeft: spacing.xl + 20 + spacing.md,
+    marginLeft: spacing.xl + 18 + spacing.md,
   },
 });
 

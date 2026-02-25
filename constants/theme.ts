@@ -31,14 +31,14 @@ export const colors = {
 
 export const typography = {
   display: {
-    fontSize: 26,
-    fontWeight: '700' as const,
-    lineHeight: 34,
+    fontSize: 21,
+    fontWeight: '600' as const,
+    lineHeight: 28,
   },
   h2: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    lineHeight: 24,
+    fontSize: 16,
+    fontWeight: '600' as const,
+    lineHeight: 22,
   },
   bodyRegular: {
     fontSize: 15,
@@ -47,7 +47,7 @@ export const typography = {
   },
   bodySemiBold: {
     fontSize: 15,
-    fontWeight: '600' as const,
+    fontWeight: '500' as const,
     lineHeight: 22,
   },
   caption: {

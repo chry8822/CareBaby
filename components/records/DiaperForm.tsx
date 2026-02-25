@@ -9,10 +9,8 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
-import DateTimePicker, {
-  type DateTimePickerEvent,
-} from '@react-native-community/datetimepicker';
 import { Calendar } from 'lucide-react-native';
+import { WheelTimePicker } from '../ui/WheelTimePicker';
 import { useAuthStore } from '../../stores/authStore';
 import { useBabyStore } from '../../stores/babyStore';
 import { useRecordStore } from '../../stores/recordStore';
@@ -52,13 +50,9 @@ export const DiaperForm = () => {
     );
   }, []);
 
-  const handleDatePickerChange = (event: DateTimePickerEvent, date?: Date) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-    if (event.type === 'set' && date) {
-      setOccurredAt(date);
-    }
+  const handleDateTimeConfirm = (date: Date) => {
+    setOccurredAt(date);
+    setShowDatePicker(false);
   };
 
   const formatDateTime = (date: Date): string => {
@@ -173,15 +167,15 @@ export const DiaperForm = () => {
             <Calendar color={DIAPER_COLOR} size={20} />
             <Text style={styles.dateButtonText}>{formatDateTime(occurredAt)}</Text>
           </TouchableOpacity>
-          {showDatePicker && (
-            <DateTimePicker
-              value={occurredAt}
-              mode="datetime"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleDatePickerChange}
-              maximumDate={new Date()}
-            />
-          )}
+          <WheelTimePicker
+            visible={showDatePicker}
+            value={occurredAt}
+            onConfirm={handleDateTimeConfirm}
+            onCancel={() => setShowDatePicker(false)}
+            accentColor={DIAPER_COLOR}
+            title="발생 시간 선택"
+            mode="datetime"
+          />
         </View>
 
         {/* 특이사항 */}
@@ -217,7 +211,7 @@ export const DiaperForm = () => {
         </View>
 
         <View style={styles.saveArea}>
-          <SaveButton onPress={handleSave} isLoading={isSaving} />
+          <SaveButton onPress={handleSave} isLoading={isSaving} color={DIAPER_COLOR} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
