@@ -5,17 +5,18 @@ import { useAuthStore } from '../stores/authStore';
 import { colors } from '../constants/theme';
 
 const SplashScreen = () => {
-  const { user, isLoading } = useAuthStore();
+  const { user, isInitialized } = useAuthStore();
 
   useEffect(() => {
-    if (isLoading) return;
+    // 초기 세션 확인이 완료되기 전까지 스플래시 표시
+    if (!isInitialized) return;
 
     if (user) {
       router.replace('/(tabs)');
     } else {
       router.replace('/(auth)/login');
     }
-  }, [user, isLoading]);
+  }, [user, isInitialized]);
 
   return (
     <View style={styles.container}>

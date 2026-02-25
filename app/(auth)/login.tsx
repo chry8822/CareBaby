@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, Image, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -36,6 +36,8 @@ const LoginScreen = () => {
     }
     try {
       await signInWithEmail(email.trim(), password);
+      // 로그인 성공 → 즉시 메인 화면으로 이동 (네비게이션 가드 보조)
+      router.replace('/(tabs)');
     } catch (err) {
       const message = err instanceof Error ? err.message : '로그인에 실패했습니다.';
       showModal({

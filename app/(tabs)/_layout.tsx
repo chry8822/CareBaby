@@ -7,7 +7,7 @@ const tabBarStyle: ViewStyle = {
   backgroundColor: colors.white,
   borderTopColor: colors.border,
   borderTopWidth: 1,
-  height: layout.tabBarHeight,
+  height: layout.tabBarHeight + 30,
   paddingBottom: 20,
   paddingTop: 10,
 };
@@ -32,36 +32,28 @@ const TabsLayout = () => {
         name="index"
         options={{
           title: '홈',
-          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <Home color={color} size={size} strokeWidth={1.8} />
-          ),
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => <Home color={color} size={size} strokeWidth={1.8} />,
         }}
       />
       <Tabs.Screen
         name="record"
         options={{
           title: '기록',
-          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <PlusCircle color={color} size={size} strokeWidth={1.8} />
-          ),
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => <PlusCircle color={color} size={size} strokeWidth={1.8} />,
         }}
       />
       <Tabs.Screen
         name="stats"
         options={{
           title: '통계',
-          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <BarChart2 color={color} size={size} strokeWidth={1.8} />
-          ),
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => <BarChart2 color={color} size={size} strokeWidth={1.8} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: '설정',
-          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <Settings color={color} size={size} strokeWidth={1.8} />
-          ),
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => <Settings color={color} size={size} strokeWidth={1.8} />,
         }}
       />
     </Tabs>
