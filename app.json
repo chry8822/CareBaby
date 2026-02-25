@@ -1,8 +1,14 @@
 {
   "expo": {
     "name": "CareBaby",
+<<<<<<< HEAD
     "slug": "carebaby",
     "version": "1.0.0",
+=======
+    "slug": "CareBaby",
+    "version": "1.0.0",
+    "scheme": "carebaby",
+>>>>>>> a88fc5b1eea3bf532c87154847c9ba43940e9b42
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -10,20 +16,33 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
+<<<<<<< HEAD
       "backgroundColor": "#FEFCF9"
     },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.carebaby.app"
+=======
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+>>>>>>> a88fc5b1eea3bf532c87154847c9ba43940e9b42
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
+<<<<<<< HEAD
         "backgroundColor": "#FEFCF9"
       },
       "package": "com.carebaby.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
+=======
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": false
+>>>>>>> a88fc5b1eea3bf532c87154847c9ba43940e9b42
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -31,9 +50,26 @@
     "plugins": [
       "expo-router",
       "expo-secure-store",
+<<<<<<< HEAD
       "@react-native-community/datetimepicker"
     ],
     "scheme": "carebaby",
+=======
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#FFB6C1"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "아기 데이터 보호를 위해 Face ID를 사용합니다."
+        }
+      ]
+    ],
+>>>>>>> a88fc5b1eea3bf532c87154847c9ba43940e9b42
     "experiments": {
       "typedRoutes": true
     }
