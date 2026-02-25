@@ -13,7 +13,7 @@ import { Toast } from '../components/ui/Toast';
 const RootLayout = () => {
   const segments = useSegments();
   const rootState = useRootNavigationState();
-  const { user, isLoading, initialize } = useAuthStore();
+  const { user, isInitialized, initialize } = useAuthStore();
   const { modal, hideModal, toast, hideToast } = useUIStore();
   const { loadPending, syncPending } = useRecordStore();
 
@@ -29,7 +29,9 @@ const RootLayout = () => {
   useEffect(() => {
     // 내비게이터가 마운트되기 전에는 라우팅하지 않음
     if (!rootState?.key) return;
-    if (isLoading) return;
+    // 초기 세션 확인이 완료되기 전에는 라우팅하지 않음
+    // (isLoading은 API 진행 중 UI 전용이므로 여기서 체크하지 않음)
+    if (!isInitialized) return;
 
     const inAuthGroup = segments[0] === '(auth)';
 
@@ -43,7 +45,7 @@ const RootLayout = () => {
     } else if (user && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [user, isLoading, segments, rootState?.key]);
+  }, [user, isInitialized, segments, rootState?.key]);
 
   return (
     <View style={styles.root}>

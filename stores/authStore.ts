@@ -6,6 +6,16 @@ import type { Profile } from '../types/database';
 interface AuthState {
   user: User | null;
   profile: Profile | null;
+  /**
+   * 앱 최초 세션 확인 완료 여부.
+   * 네비게이션 가드는 이 값만 체크한다.
+   * 로그인/로그아웃 API 진행 중에는 변하지 않는다.
+   */
+  isInitialized: boolean;
+  /**
+   * 로그인·로그아웃 API 진행 중 여부 (UI 버튼 비활성화 전용).
+   * 네비게이션 가드에서는 사용하지 않는다.
+   */
   isLoading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
@@ -17,14 +27,15 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   profile: null,
-  isLoading: true,
+  isInitialized: false,
+  isLoading: false,
 
   signInWithEmail: async (email: string, password: string) => {
     set({ isLoading: true });
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      // onAuthStateChange에 의존하지 않고 즉시 user를 설정해 리다이렉트 타이밍을 보장
+      // onAuthStateChange에 의존하지 않고 즉시 user를 설정 → 네비게이션 가드 즉시 트리거
       if (data.user) {
         set({ user: data.user });
         await get().fetchProfile();
@@ -86,12 +97,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: () => {
     if (!isSupabaseConfigured) {
-      set({ isLoading: false });
+      // Supabase 미설정 시 즉시 초기화 완료 처리
+      set({ isInitialized: true });
       return () => {};
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
-      set({ user: session?.user ?? null, isLoading: false });
+      // getSession 완료 = 초기화 완료. isInitialized: true 를 마지막에 설정해
+      // 네비게이션 가드가 한 번만 올바른 상태로 판단하도록 보장한다.
+      set({ user: session?.user ?? null, isInitialized: true });
       if (session?.user) {
         get().fetchProfile();
       }
