@@ -1,5 +1,4 @@
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { LogOut, User, Bell, Shield, ChevronRight } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -51,7 +50,7 @@ const SettingsScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <View style={styles.safe}>
       <PageHeader title="설정" subtitle="계정 및 앱 설정" />
 
       <ScrollView
@@ -97,7 +96,7 @@ const SettingsScreen = () => {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

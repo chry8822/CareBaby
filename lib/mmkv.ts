@@ -18,7 +18,7 @@ try {
   const TEST_KEY = '__mmkv_init_test__';
   _storage.set(TEST_KEY, 'ok');
   _isWorking = _storage.getString(TEST_KEY) === 'ok';
-  _storage.delete(TEST_KEY);
+  _storage.remove(TEST_KEY);
 } catch {
   // Expo Go 환경 또는 네이티브 모듈 없음 — AsyncStorage로 자동 대체됨
   _storage = null;
@@ -35,7 +35,7 @@ export const mmkvStorageAdapter = (_storage && _isWorking)
         _storage!.set(key, value);
       },
       removeItem: (key: string): void => {
-        _storage!.delete(key);
+        _storage!.remove(key);
       },
     }
   : null;

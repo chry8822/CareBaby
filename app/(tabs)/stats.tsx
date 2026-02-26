@@ -1,12 +1,11 @@
 import { View, Text, Image, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { BarChart2 } from 'lucide-react-native';
 import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
 import { PageHeader } from '../../components/ui/PageHeader';
 
 const StatsScreen = () => {
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <View style={styles.safe}>
       <PageHeader title="통계" subtitle="패턴 분석 및 인사이트" />
 
       <ScrollView
@@ -32,7 +31,7 @@ const StatsScreen = () => {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

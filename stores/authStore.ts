@@ -102,24 +102,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return () => {};
     }
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      // getSession 완료 = 초기화 완료. isInitialized: true 를 마지막에 설정해
-      // 네비게이션 가드가 한 번만 올바른 상태로 판단하도록 보장한다.
-      set({ user: session?.user ?? null, isInitialized: true });
-      if (session?.user) {
-        get().fetchProfile();
-      }
-    });
+    // getSession 실패(네트워크 없음 등) 시에도 isInitialized: true를 보장해
+    // 네비게이션 가드가 영원히 대기하는 상황을 방지한다.
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        set({ user: session?.user ?? null, isInitialized: true });
+        if (session?.user) {
+          get().fetchProfile();
+        }
+      })
+      .catch(() => {
+        set({ user: null, isInitialized: true });
+      });
+
+    // TOKEN_REFRESH_FAILED 이후 Supabase는 연이어 SIGNED_OUT을 자동 발생시킨다.
+    // 이 자동 SIGNED_OUT을 차단하지 않으면 사용자가 의도하지 않게 로그아웃된다.
+    let _ignoreNextSignedOut = false;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // TOKEN_REFRESH_FAILED: 네트워크 오류 등으로 토큰 갱신 실패.
-      // 이미 저장된 세션이 있으면 유지하고, 없을 때만 로그아웃 처리.
-      if (event === 'TOKEN_REFRESH_FAILED') {
-        const currentUser = get().user;
-        if (!currentUser) set({ profile: null });
+      if ((event as string) === 'TOKEN_REFRESH_FAILED') {
+        // 토큰 갱신 실패: user 상태를 변경하지 않고,
+        // 뒤따라오는 자동 SIGNED_OUT 이벤트를 무시하도록 플래그를 세운다.
+        _ignoreNextSignedOut = true;
         return;
       }
 
+      if (event === 'SIGNED_OUT' && _ignoreNextSignedOut) {
+        // TOKEN_REFRESH_FAILED에 의한 자동 SIGNED_OUT → 무시
+        _ignoreNextSignedOut = false;
+        return;
+      }
+
+      _ignoreNextSignedOut = false;
       set({ user: session?.user ?? null });
       if (session?.user) {
         get().fetchProfile();

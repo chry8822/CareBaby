@@ -249,7 +249,7 @@ export const WheelTimePicker = ({
   const renderColumn = (
     labels: string[],
     selectedIdx: number,
-    ref: React.RefObject<ScrollView>,
+    ref: React.RefObject<ScrollView | null>,
     onScrollEnd: (e: NativeSyntheticEvent<NativeScrollEvent>) => void,
     flex = 1,
   ) => (

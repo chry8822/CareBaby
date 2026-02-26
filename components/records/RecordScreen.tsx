@@ -6,7 +6,6 @@ import {
   FlatList,
   StyleSheet,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { TrendingUp, Heart, MoreHorizontal, Construction } from 'lucide-react-native';
 import { FeedingForm } from './FeedingForm';
 import { SleepForm } from './SleepForm';
@@ -180,7 +179,7 @@ export const RecordScreen = ({ initialTab }: RecordScreenProps) => {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
+    <View style={styles.safe}>
       <PageHeader title="기록하기" subtitle="오늘의 육아를 기록해요" />
 
       <View style={styles.tabBarWrapper}>
@@ -196,7 +195,7 @@ export const RecordScreen = ({ initialTab }: RecordScreenProps) => {
       </View>
 
       <View style={styles.content}>{renderContent()}</View>
-    </SafeAreaView>
+    </View>
   );
 };
 
