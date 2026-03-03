@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import type { User } from '@supabase/supabase-js';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { supabase, isSupabaseConfigured, authStorage, authStorageKey } from '../lib/supabase';
 import type { Profile } from '../types/database';
 
 interface AuthState {
@@ -9,12 +9,10 @@ interface AuthState {
   /**
    * 앱 최초 세션 확인 완료 여부.
    * 네비게이션 가드는 이 값만 체크한다.
-   * 로그인/로그아웃 API 진행 중에는 변하지 않는다.
    */
   isInitialized: boolean;
   /**
    * 로그인·로그아웃 API 진행 중 여부 (UI 버튼 비활성화 전용).
-   * 네비게이션 가드에서는 사용하지 않는다.
    */
   isLoading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
@@ -23,6 +21,32 @@ interface AuthState {
   fetchProfile: () => Promise<void>;
   initialize: () => () => void;
 }
+
+/**
+ * Supabase storage에서 저장된 user를 직접 읽는다.
+ *
+ * 배경:
+ *   Supabase v2의 getSession() / INITIAL_SESSION은 access token이 만료 근접 시
+ *   _callRefreshToken()을 호출한다.
+ *   - 비재시도 오류(invalid_grant 등): session을 storage에서 삭제 후 null 반환
+ *   - 재시도 가능 오류(네트워크 단절):  session은 storage에 남아있으나 null 반환
+ *
+ *   이 함수는 INITIAL_SESSION이 null을 반환했을 때 storage를 직접 확인함으로써
+ *   두 케이스를 구분한다.
+ *   - storage 비어있음 → 로그아웃 (올바른 동작)
+ *   - storage에 session 존재 → 로그인 유지 (네트워크 복구 시 auto-refresh가 처리)
+ */
+const readStoredUser = async (): Promise<User | null> => {
+  if (!authStorageKey) return null;
+  try {
+    const raw = await authStorage.getItem(authStorageKey);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw as string) as { user?: User } | null;
+    return parsed?.user ?? null;
+  } catch {
+    return null;
+  }
+};
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
@@ -35,7 +59,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      // onAuthStateChange에 의존하지 않고 즉시 user를 설정 → 네비게이션 가드 즉시 트리거
       if (data.user) {
         set({ user: data.user });
         await get().fetchProfile();
@@ -97,43 +120,36 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: () => {
     if (!isSupabaseConfigured) {
-      // Supabase 미설정 시 즉시 초기화 완료 처리
       set({ isInitialized: true });
       return () => {};
     }
 
-    // getSession 실패(네트워크 없음 등) 시에도 isInitialized: true를 보장해
-    // 네비게이션 가드가 영원히 대기하는 상황을 방지한다.
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        set({ user: session?.user ?? null, isInitialized: true });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'INITIAL_SESSION') {
         if (session?.user) {
+          // 정상 케이스: session 유효하거나 refresh 성공
+          set({ user: session.user, isInitialized: true });
           get().fetchProfile();
+        } else {
+          // session null = 두 가지 경우:
+          // (a) 저장된 세션 없음 → 로그아웃
+          // (b) 네트워크 오류로 refresh 실패 → session은 storage에 잔존
+          // storage를 직접 읽어 구분한다.
+          const storedUser = await readStoredUser();
+          set({ user: storedUser, isInitialized: true });
+          // 네트워크가 돌아오면 Supabase autoRefreshToken이 갱신하므로
+          // fetchProfile 실패는 무시한다.
+          if (storedUser) get().fetchProfile().catch(() => {});
         }
-      })
-      .catch(() => {
-        set({ user: null, isInitialized: true });
-      });
-
-    // TOKEN_REFRESH_FAILED 이후 Supabase는 연이어 SIGNED_OUT을 자동 발생시킨다.
-    // 이 자동 SIGNED_OUT을 차단하지 않으면 사용자가 의도하지 않게 로그아웃된다.
-    let _ignoreNextSignedOut = false;
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if ((event as string) === 'TOKEN_REFRESH_FAILED') {
-        // 토큰 갱신 실패: user 상태를 변경하지 않고,
-        // 뒤따라오는 자동 SIGNED_OUT 이벤트를 무시하도록 플래그를 세운다.
-        _ignoreNextSignedOut = true;
         return;
       }
 
-      if (event === 'SIGNED_OUT' && _ignoreNextSignedOut) {
-        // TOKEN_REFRESH_FAILED에 의한 자동 SIGNED_OUT → 무시
-        _ignoreNextSignedOut = false;
+      if (event === 'SIGNED_OUT') {
+        set({ user: null, profile: null });
         return;
       }
 
-      _ignoreNextSignedOut = false;
+      // SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED 등
       set({ user: session?.user ?? null });
       if (session?.user) {
         get().fetchProfile();

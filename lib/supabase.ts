@@ -39,12 +39,20 @@ const resolveStorage = () => {
 const PLACEHOLDER_URL = 'https://placeholder.supabase.co';
 const PLACEHOLDER_KEY = 'placeholder-key';
 
+// Supabase v2가 실제로 사용하는 storage 인스턴스와 키를 export해
+// authStore에서 세션을 직접 읽을 수 있도록 한다.
+// (refresh 실패 시 null을 반환하더라도 storage에 세션이 남아있는 경우 로그인 유지)
+export const authStorage = resolveStorage();
+export const authStorageKey = isValidUrl(supabaseUrl)
+  ? `sb-${new URL(supabaseUrl).hostname.split('.')[0]}-auth-token`
+  : '';
+
 export const supabase = createClient<Database>(
   isValidUrl(supabaseUrl) ? supabaseUrl : PLACEHOLDER_URL,
   supabaseAnonKey || PLACEHOLDER_KEY,
   {
     auth: {
-      storage: resolveStorage(),
+      storage: authStorage,
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: false,
