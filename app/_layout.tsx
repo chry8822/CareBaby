@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet, LogBox } from 'react-native';
 import { Stack, router, useSegments, useRootNavigationState } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView, initialWindowMetrics } from 'react-native-safe-area-context';
@@ -10,6 +10,10 @@ import { isSupabaseConfigured } from '../lib/supabase';
 import { colors } from '../constants/theme';
 import { AppModal } from '../components/ui/AppModal';
 import { Toast } from '../components/ui/Toast';
+
+// Supabase가 refresh token 만료 시 내부적으로 console.error를 찍는다.
+// 앱 동작에는 영향 없으며 세션이 만료된 정상 케이스이므로 LogBox에서 숨긴다.
+LogBox.ignoreLogs(['Invalid Refresh Token']);
 
 const RootLayout = () => {
   const segments = useSegments();
