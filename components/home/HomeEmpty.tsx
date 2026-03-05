@@ -11,18 +11,21 @@ import {
 } from '../../constants/theme';
 import { getDaysSinceBirth, getGreeting } from '../../lib/timeUtils';
 
-interface HomeEmptyProps {
-  baby: Baby;
-}
+type QuickCategory = 'feeding' | 'sleep' | 'diaper';
 
 interface QuickAction {
   label: string;
   icon: React.ReactNode;
   color: string;
-  category: string;
+  category: QuickCategory;
 }
 
-export const HomeEmpty = ({ baby }: HomeEmptyProps) => {
+interface HomeEmptyProps {
+  baby: Baby;
+  onQuickAction?: (category: QuickCategory) => void;
+}
+
+export const HomeEmpty = ({ baby, onQuickAction }: HomeEmptyProps) => {
   const greeting = getGreeting();
   const daysSince = getDaysSinceBirth(baby.birth_date);
 
@@ -53,8 +56,12 @@ export const HomeEmpty = ({ baby }: HomeEmptyProps) => {
     },
   ];
 
-  const handleQuickAction = (category: string) => {
-    router.push(`/(tabs)/record?category=${category}` as never);
+  const handleQuickAction = (category: QuickCategory) => {
+    if (onQuickAction) {
+      onQuickAction(category);
+    } else {
+      router.push(`/(tabs)/record?category=${category}` as never);
+    }
   };
 
   return (

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useRealtime } from './useRealtime';
 import type { Feeding, Sleep, Diaper } from '../types/database';
 
 // ─── 공개 타입 ─────────────────────────────────────────────────────────────────
@@ -216,19 +217,13 @@ export function useHomeData(babyId: string | null): HomeData {
     return () => clearInterval(interval);
   }, []);
 
-  // Phase 3에서 Realtime 구독으로 교체 예정
-  /*
-  useEffect(() => {
-    if (!babyId) return;
-    const channel = supabase
-      .channel('home-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'feedings', filter: `baby_id=eq.${babyId}` }, fetch)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sleeps', filter: `baby_id=eq.${babyId}` }, fetch)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'diapers', filter: `baby_id=eq.${babyId}` }, fetch)
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [babyId, fetch]);
-  */
+  // Realtime 구독: 다른 기기에서 기록 변경 시 자동 갱신 (목표: 2초 이내)
+  useRealtime({
+    babyId,
+    onFeedingChange: fetch,
+    onSleepChange: fetch,
+    onDiaperChange: fetch,
+  });
 
   return {
     lastFeeding,

@@ -10,6 +10,7 @@ interface BabyState {
   fetchBabies: () => Promise<void>;
   setCurrentBaby: (baby: Baby) => void;
   createBaby: (name: string, birthDate: string, gender: BabyGender) => Promise<Baby>;
+  updateBaby: (babyId: string, name: string, birthDate: string, gender: BabyGender) => Promise<Baby>;
   generateInviteCode: (babyId: string) => Promise<string>;
   joinByInviteCode: (code: string) => Promise<{ success: boolean; baby_id: string | null }>;
   fetchCaretakers: (babyId: string) => Promise<void>;
@@ -92,9 +93,35 @@ export const useBabyStore = create<BabyState>((set, get) => ({
     }
   },
 
+  updateBaby: async (babyId: string, name: string, birthDate: string, gender: BabyGender) => {
+    set({ isLoading: true });
+    try {
+      const { data: baby, error } = await supabase
+        .from('babies')
+        .update({ name, birth_date: birthDate, gender })
+        .eq('id', babyId)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const updatedBabies = get().babies.map((b) => (b.id === babyId ? baby : b));
+      const currentBaby = get().currentBaby;
+      set({
+        babies: updatedBabies,
+        currentBaby: currentBaby?.id === babyId ? baby : currentBaby,
+      });
+      return baby;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   generateInviteCode: async (babyId: string) => {
     const { data, error } = await supabase.rpc('generate_invite_code', { baby_id: babyId });
     if (error) throw error;
+    // 생성 후 caretakers 즉시 갱신 (InviteCodeCard 코드 반영)
+    await get().fetchCaretakers(babyId);
     return data as string;
   },
 

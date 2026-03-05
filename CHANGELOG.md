@@ -109,12 +109,49 @@
 
 ---
 
-## Phase 3 — Realtime 동기화 🔲 예정
+## Phase 3 — Realtime 동기화 + 공동 양육자 + 홈 빠른기록 ✅ 완료
 
-### 계획된 작업
-- Supabase Realtime 채널 구독 (`feedings` / `sleeps` / `diapers`)
-- 다중 기기(부모·조부모 등) 동시 기록 시 홈 화면 자동 갱신
-- `useHomeData.ts`의 주석 처리된 Realtime 구독 코드 활성화
+> 2026-02-27
+
+### 핵심 작업
+- Supabase Realtime 채널 구독으로 다중 기기 실시간 동기화
+- 공동 양육자 초대 코드 발급 / 참여 UI 완성
+- 홈 화면 FAB + 바텀시트로 탭 이동 없는 빠른 기록
+
+### 추가된 기능
+
+#### 홈 빠른기록
+| 항목 | 내용 |
+|------|------|
+| `BottomSheet.tsx` | 범용 바텀시트 컴포넌트 (PanResponder 드래그 닫기, KeyboardAvoidingView) |
+| `QuickRecordSheet.tsx` | 홈 전용 빠른기록 시트 (수유·수면·기저귀 탭 전환) |
+| 홈 FAB | 우측 하단 플로팅 `+` 버튼 → QuickRecordSheet 오픈 |
+| 타이머 카드 탭 | 해당 카테고리로 QuickRecordSheet 자동 선택 오픈 |
+| 저장 성공 | 바텀시트 닫기 + 홈 대시보드 즉시 갱신 |
+
+#### Realtime 동기화
+| 항목 | 내용 |
+|------|------|
+| `useRealtime.ts` | Supabase Realtime 채널 구독 훅 (feedings·sleeps·diapers) |
+| `useHomeData.ts` | 주석 처리된 구독 코드 → `useRealtime` 훅으로 교체 |
+| 동기화 지연 | 목표 2초 이내 |
+
+#### 공동 양육자
+| 항목 | 내용 |
+|------|------|
+| `InviteCodeCard.tsx` | 초대 코드 생성 / 복사 카드 (24시간 카운트다운) |
+| `JoinByCodeForm.tsx` | 6칸 개별 입력 + 자동 포커스 이동 + 자동 제출 |
+| `CaretakerList.tsx` | 양육자 목록 (owner만 삭제 가능, confirm 모달) |
+| `settings.tsx` | 공동 양육자 섹션 추가 (초대/참여/목록 통합) |
+| `babyStore.ts` | `generateInviteCode` 후 `fetchCaretakers` 자동 호출 |
+
+### 의존성 추가
+- `expo-clipboard ~7.0.0` — 초대 코드 복사 기능
+
+### 아키텍처 결정
+- `BottomSheet` → `WheelTimePicker`와 동일한 PanResponder 기반 설계, 재사용 가능한 공통 컴포넌트
+- `onCardPress` / `onQuickAction` 콜백으로 기존 탭 라우팅 fallback 유지 (하위 호환)
+- `useRealtime` 콜백 ref 패턴으로 채널 재생성 없이 최신 함수 참조 보장
 
 ---
 
@@ -159,7 +196,7 @@
 Phase 1  ████████████████████  ✅ 완료
 Phase 2  ████████████████████  ✅ 완료
 Phase 2.1████████████████████  ✅ 완료 (버그 수정)
-Phase 3  ░░░░░░░░░░░░░░░░░░░░  🔲 예정 (Realtime)
+Phase 3  ████████████████████  ✅ 완료 (Realtime + 공동양육자 + 빠른기록)
 Phase 4  ░░░░░░░░░░░░░░░░░░░░  🔲 예정 (AI 인사이트)
 Phase 5  ░░░░░░░░░░░░░░░░░░░░  🔲 예정 (통계 차트)
 Phase 6  ░░░░░░░░░░░░░░░░░░░░  🔲 예정 (알림 & 설정)

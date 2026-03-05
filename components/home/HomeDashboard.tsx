@@ -23,12 +23,15 @@ import { InsightCard } from './InsightCard';
 import { TimerCardList } from './TimerCardList';
 import { TimelineList } from './TimelineList';
 
+type QuickCategory = 'feeding' | 'sleep' | 'diaper';
+
 // HomeData에서 refresh와 isLoading만 추출하는 타입
 type HomeDashboardProps = {
   baby: Baby;
+  onQuickAction?: (category: QuickCategory) => void;
 } & HomeData;
 
-const QUICK_ACTIONS = [
+const QUICK_ACTIONS: { label: string; icon: React.ReactNode; color: string; category: QuickCategory }[] = [
   { label: '모유', icon: <Droplets size={18} color={colors.activity.nursing} strokeWidth={1.8} />, color: colors.activity.nursing, category: 'feeding' },
   { label: '분유', icon: <Droplets size={18} color={colors.activity.nursing} strokeWidth={1.8} />, color: colors.activity.nursing, category: 'feeding' },
   { label: '수면', icon: <Moon size={18} color={colors.activity.sleep} strokeWidth={1.8} />, color: colors.activity.sleep, category: 'sleep' },
@@ -48,12 +51,17 @@ export const HomeDashboard = ({
   timeline,
   isLoading,
   refresh,
+  onQuickAction,
 }: HomeDashboardProps) => {
   const greeting = getGreeting();
   const daysSince = getDaysSinceBirth(baby.birth_date);
 
-  const handleQuickAction = (category: string) => {
-    router.push(`/(tabs)/record?category=${category}` as never);
+  const handleQuickAction = (category: QuickCategory) => {
+    if (onQuickAction) {
+      onQuickAction(category);
+    } else {
+      router.push(`/(tabs)/record?category=${category}` as never);
+    }
   };
 
   const summaryText = [
@@ -96,6 +104,7 @@ export const HomeDashboard = ({
         feedingElapsed={feedingElapsed}
         sleepElapsed={sleepElapsed}
         diaperElapsed={diaperElapsed}
+        onCardPress={onQuickAction}
       />
 
       {/* 이하 섹션은 수평 패딩 */}

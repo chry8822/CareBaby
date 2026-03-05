@@ -17,6 +17,8 @@ import {
 } from '../../constants/theme';
 import { formatElapsed } from '../../lib/timeUtils';
 
+type QuickCategory = 'feeding' | 'sleep' | 'diaper';
+
 interface TimerCardListProps {
   lastFeeding: Feeding | null;
   lastSleep: Sleep | null;
@@ -24,6 +26,7 @@ interface TimerCardListProps {
   feedingElapsed: number;
   sleepElapsed: number;
   diaperElapsed: number;
+  onCardPress?: (category: QuickCategory) => void;
 }
 
 interface TimerCardData {
@@ -33,7 +36,7 @@ interface TimerCardData {
   color: string;
   elapsed: number;
   hasRecord: boolean;
-  category: string;
+  category: QuickCategory;
 }
 
 export const TimerCardList = ({
@@ -43,6 +46,7 @@ export const TimerCardList = ({
   feedingElapsed,
   sleepElapsed,
   diaperElapsed,
+  onCardPress,
 }: TimerCardListProps) => {
   const cards: TimerCardData[] = [
     {
@@ -74,8 +78,12 @@ export const TimerCardList = ({
     },
   ];
 
-  const handlePress = (category: string) => {
-    router.push(`/(tabs)/record?category=${category}` as never);
+  const handlePress = (category: QuickCategory) => {
+    if (onCardPress) {
+      onCardPress(category);
+    } else {
+      router.push(`/(tabs)/record?category=${category}` as never);
+    }
   };
 
   return (

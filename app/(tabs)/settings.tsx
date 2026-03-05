@@ -1,9 +1,15 @@
+import { useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { LogOut, User, Bell, Shield, ChevronRight } from 'lucide-react-native';
+import { LogOut, User, Bell, Shield, Users, ChevronRight, Baby, Edit3 } from 'lucide-react-native';
+import { router } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
+import { useBabyStore } from '../../stores/babyStore';
 import { useUIStore } from '../../stores/uiStore';
 import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { InviteCodeCard } from '../../components/caretaker/InviteCodeCard';
+import { JoinByCodeForm } from '../../components/caretaker/JoinByCodeForm';
+import { CaretakerList } from '../../components/caretaker/CaretakerList';
 
 interface SettingsRowProps {
   icon: React.ReactNode;
@@ -24,7 +30,25 @@ const SettingsRow = ({ icon, label, onPress, danger = false }: SettingsRowProps)
 
 const SettingsScreen = () => {
   const { profile, signOut } = useAuthStore();
+  const { currentBaby, caretakers, fetchCaretakers } = useBabyStore();
   const { showModal, hideModal, showToast } = useUIStore();
+
+  const myCaretaker = caretakers.find((c) => c.profile_id === profile?.id);
+  const isOwner = myCaretaker?.role === 'owner';
+
+  const navLock = useRef(false);
+  const navigateToBabySetup = useCallback((mode?: string) => {
+    if (navLock.current) return;
+    navLock.current = true;
+    router.push(mode ? `/baby-setup?mode=${mode}` : '/baby-setup');
+    setTimeout(() => { navLock.current = false; }, 600);
+  }, []);
+
+  useEffect(() => {
+    if (currentBaby?.id) {
+      fetchCaretakers(currentBaby.id);
+    }
+  }, [currentBaby?.id]);
 
   const handleSignOut = () => {
     showModal({
@@ -58,6 +82,7 @@ const SettingsScreen = () => {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {/* 프로필 카드 */}
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
             <User color={colors.white} size={24} />
@@ -68,6 +93,84 @@ const SettingsScreen = () => {
           </View>
         </View>
 
+        {/* 아기 정보 섹션 */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Baby color={colors.text.secondary} size={14} strokeWidth={1.8} />
+            <Text style={styles.sectionLabel}>아기 정보</Text>
+          </View>
+
+          {currentBaby ? (
+            <TouchableOpacity
+              style={[styles.card, styles.babyCard]}
+              onPress={() => navigateToBabySetup('edit')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.babyCardLeft}>
+                <View style={styles.babyAvatar}>
+                  <Text style={styles.babyAvatarEmoji}>
+                    {currentBaby.gender === 'male' ? '👦' : currentBaby.gender === 'female' ? '👧' : '🍼'}
+                  </Text>
+                </View>
+                <View>
+                  <Text style={styles.babyName}>{currentBaby.name}</Text>
+                  <Text style={styles.babySub}>
+                    {currentBaby.birth_date
+                      ? new Date(currentBaby.birth_date).toLocaleDateString('ko-KR', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })
+                      : '생년월일 미입력'}
+                  </Text>
+                </View>
+              </View>
+              <Edit3 color={colors.text.secondary} size={16} strokeWidth={1.8} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={[styles.card, styles.babyRegisterCard]}
+              onPress={() => navigateToBabySetup()}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.babyRegisterText}>아기 등록하기</Text>
+              <ChevronRight color={colors.accent} size={16} strokeWidth={1.8} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* 공동 양육자 섹션 */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Users color={colors.text.secondary} size={14} strokeWidth={1.8} />
+            <Text style={styles.sectionLabel}>공동 양육자</Text>
+          </View>
+
+          <View style={styles.caretakerCards}>
+            {currentBaby ? (
+              <>
+                {/* owner면 초대 코드 카드, caretaker면 안내 텍스트 */}
+                {isOwner ? (
+                  <InviteCodeCard babyId={currentBaby.id} />
+                ) : myCaretaker ? (
+                  <View style={styles.caretakerInfoCard}>
+                    <Text style={styles.caretakerInfoText}>
+                      초대 코드로 참여한 공동 양육자예요.
+                    </Text>
+                  </View>
+                ) : null}
+
+                {/* 양육자 목록 */}
+                <CaretakerList babyId={currentBaby.id} />
+              </>
+            ) : null}
+
+            {/* 초대 코드 입력폼 — 아기 미등록 상태에서도 항상 표시 */}
+            <JoinByCodeForm />
+          </View>
+        </View>
+
+        {/* 계정 설정 */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>계정</Text>
           <View style={styles.card}>
@@ -85,6 +188,7 @@ const SettingsScreen = () => {
           </View>
         </View>
 
+        {/* 로그아웃 */}
         <View style={styles.section}>
           <View style={styles.card}>
             <SettingsRow
@@ -146,12 +250,71 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: spacing.xl,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+    marginLeft: spacing.xs,
+  },
   sectionLabel: {
     ...typography.caption,
     color: colors.text.secondary,
-    marginBottom: spacing.sm,
-    marginLeft: spacing.xs,
     letterSpacing: 0.3,
+  },
+  babyCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.cardPadding,
+  },
+  babyCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  babyAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.full,
+    backgroundColor: '#FDF2F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  babyAvatarEmoji: {
+    fontSize: 22,
+  },
+  babyName: {
+    ...typography.h2,
+    color: colors.text.primary,
+  },
+  babySub: {
+    ...typography.caption,
+    color: colors.text.secondary,
+    marginTop: 2,
+  },
+  babyRegisterCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.cardPadding,
+  },
+  babyRegisterText: {
+    ...typography.bodySemiBold,
+    color: colors.accent,
+  },
+  caretakerCards: {
+    gap: spacing.md,
+  },
+  caretakerInfoCard: {
+    backgroundColor: colors.bg.elevated,
+    borderRadius: borderRadius.base,
+    padding: spacing.cardPadding,
+    ...shadows.card,
+  },
+  caretakerInfoText: {
+    ...typography.bodyRegular,
+    color: colors.text.secondary,
   },
   card: {
     backgroundColor: colors.bg.elevated,

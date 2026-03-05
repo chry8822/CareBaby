@@ -1,5 +1,4 @@
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 import {
   colors,
   typography,
@@ -8,7 +7,11 @@ import {
   shadows,
 } from '../../constants/theme';
 
-export const BabySetupPrompt = () => {
+interface BabySetupPromptProps {
+  onRegisterPress: () => void;
+}
+
+export const BabySetupPrompt = ({ onRegisterPress }: BabySetupPromptProps) => {
   return (
     <View style={styles.container}>
       <View style={styles.imageContainer}>
@@ -24,7 +27,7 @@ export const BabySetupPrompt = () => {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => router.push('/(tabs)/settings')}
+        onPress={onRegisterPress}
         activeOpacity={0.85}
       >
         <Text style={styles.buttonText}>아기 등록하기</Text>

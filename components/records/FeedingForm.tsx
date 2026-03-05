@@ -33,7 +33,11 @@ const MEMO_CHIPS = ['잘 먹음', '칭얼거림', '트림함', '뱉음', '졸면
 
 const NURSING_COLOR = colors.activity.nursing;
 
-export const FeedingForm = () => {
+interface FeedingFormProps {
+  onSaveSuccess?: () => void;
+}
+
+export const FeedingForm = ({ onSaveSuccess }: FeedingFormProps) => {
   const { user } = useAuthStore();
   const { currentBaby } = useBabyStore();
   const { saveFeeding } = useRecordStore();
@@ -132,6 +136,7 @@ export const FeedingForm = () => {
 
       showToast('기록이 저장되었어요', 'success');
       resetForm();
+      onSaveSuccess?.();
     } catch {
       showModal({
         title: '저장 실패',
