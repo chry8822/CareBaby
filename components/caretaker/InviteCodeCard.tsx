@@ -59,7 +59,8 @@ export const InviteCodeCard = ({ babyId }: InviteCodeCardProps) => {
     try {
       await generateInviteCode(babyId);
       await fetchCaretakers(babyId);
-    } catch {
+    } catch (error) {
+      console.log('코드 생성 실패', error);
       showModal({
         title: '코드 생성 실패',
         message: '초대 코드를 생성하지 못했어요. 잠시 후 다시 시도해주세요.',

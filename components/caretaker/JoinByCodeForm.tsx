@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Keyboard,
 } from 'react-native';
+import * as Clipboard from 'expo-clipboard';
+import { ClipboardPaste } from 'lucide-react-native';
 import { useBabyStore } from '../../stores/babyStore';
 import { useUIStore } from '../../stores/uiStore';
 import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
@@ -79,6 +81,24 @@ export const JoinByCodeForm = () => {
     }
   };
 
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await Clipboard.getStringAsync();
+      const cleaned = text.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, CODE_LENGTH);
+      if (!cleaned) return;
+
+      const newDigits = Array(CODE_LENGTH).fill('');
+      cleaned.split('').forEach((char, i) => {
+        newDigits[i] = char;
+      });
+      setDigits(newDigits);
+
+      Keyboard.dismiss();
+    } catch {
+      showToast('클립보드를 읽을 수 없어요', 'error');
+    }
+  };
+
   const handleSubmitPress = async () => {
     const code = digits.join('');
     if (code.length < CODE_LENGTH) return;
@@ -114,6 +134,17 @@ export const JoinByCodeForm = () => {
           />
         ))}
       </View>
+
+      {/* 클립보드 붙여넣기 버튼 */}
+      <TouchableOpacity
+        style={styles.pasteButton}
+        onPress={handlePasteFromClipboard}
+        disabled={isJoining}
+        activeOpacity={0.7}
+      >
+        <ClipboardPaste size={14} color={colors.accent} strokeWidth={1.8} />
+        <Text style={styles.pasteButtonText}>복사한 코드 붙여넣기</Text>
+      </TouchableOpacity>
 
       <TouchableOpacity
         style={[styles.submitButton, (!isFilled || isJoining) && styles.submitButtonDisabled]}
@@ -170,6 +201,19 @@ const styles = StyleSheet.create({
   digitInputFilled: {
     borderColor: colors.accent,
     backgroundColor: `${colors.accent}0D`,
+  },
+  pasteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  pasteButtonText: {
+    ...typography.caption,
+    color: colors.accent,
+    fontWeight: '600',
   },
   submitButton: {
     backgroundColor: colors.accent,

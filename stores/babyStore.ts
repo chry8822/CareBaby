@@ -118,7 +118,7 @@ export const useBabyStore = create<BabyState>((set, get) => ({
   },
 
   generateInviteCode: async (babyId: string) => {
-    const { data, error } = await supabase.rpc('generate_invite_code', { baby_id: babyId });
+    const { data, error } = await supabase.rpc('generate_invite_code', { p_baby_id: babyId });
     if (error) throw error;
     // 생성 후 caretakers 즉시 갱신 (InviteCodeCard 코드 반영)
     await get().fetchCaretakers(babyId);
