@@ -58,33 +58,16 @@ export const useBabyStore = create<BabyState>((set, get) => ({
   createBaby: async (name: string, birthDate: string, gender: BabyGender) => {
     set({ isLoading: true });
     try {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) throw new Error('로그인이 필요합니다.');
-
-      const { data: baby, error: babyError } = await supabase
-        .from('babies')
-        .insert({
-          name,
-          birth_date: birthDate,
-          gender,
-          avatar_url: null,
-          created_by: session.session.user.id,
-        })
-        .select()
-        .single();
-
-      if (babyError) throw babyError;
-
-      const { error: caretakerError } = await supabase.from('caretakers').insert({
-        baby_id: baby.id,
-        profile_id: session.session.user.id,
-        role: 'owner',
-        invite_code: null,
-        invite_expires_at: null,
+      const { data, error } = await supabase.rpc('create_baby_with_owner', {
+        p_name: name,
+        p_birth_date: birthDate,
+        p_gender: gender,
+        p_avatar_url: null,
       });
 
-      if (caretakerError) throw caretakerError;
+      if (error) throw error;
 
+      const baby = data as Baby;
       const updatedBabies = [...get().babies, baby];
       set({ babies: updatedBabies, currentBaby: baby });
       return baby;

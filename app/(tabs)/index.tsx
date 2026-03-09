@@ -1,16 +1,14 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { Plus } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { useBabyStore } from '../../stores/babyStore';
 import { useHomeData } from '../../hooks/useHomeData';
-import { colors, layout, shadows } from '../../constants/theme';
+import { colors } from '../../constants/theme';
 import { BabySetupPrompt } from '../../components/home/BabySetupPrompt';
 import { HomeEmpty } from '../../components/home/HomeEmpty';
 import { HomeDashboard } from '../../components/home/HomeDashboard';
 import { QuickRecordSheet } from '../../components/home/QuickRecordSheet';
-
-type QuickCategory = 'feeding' | 'sleep' | 'diaper';
+import type { QuickCategory } from '../../components/home/QuickRecordSheet';
 
 const HomeScreen = () => {
   const { currentBaby, fetchBabies, isLoading: babyLoading } = useBabyStore();
@@ -18,11 +16,25 @@ const HomeScreen = () => {
 
   const [sheetVisible, setSheetVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<QuickCategory>('feeding');
-  const navLock = useRef(false);
+
+  const navigating = useRef(false);
 
   useEffect(() => {
     fetchBabies();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 화면이 다시 포커스를 받을 때(= baby-setup에서 돌아올 때) 락 해제
+  useFocusEffect(
+    useCallback(() => {
+      navigating.current = false;
+    }, [])
+  );
+
+  const handleRegisterPress = useCallback(() => {
+    if (navigating.current) return;
+    navigating.current = true;
+    router.push('/baby-setup');
   }, []);
 
   const handleQuickAction = useCallback((category: QuickCategory) => {
@@ -52,12 +64,7 @@ const HomeScreen = () => {
   if (!currentBaby) {
     return (
       <View style={styles.safe}>
-        <BabySetupPrompt onRegisterPress={() => {
-          if (navLock.current) return;
-          navLock.current = true;
-          router.push('/baby-setup');
-          setTimeout(() => { navLock.current = false; }, 600);
-        }} />
+        <BabySetupPrompt onRegisterPress={handleRegisterPress} />
       </View>
     );
   }
@@ -79,18 +86,6 @@ const HomeScreen = () => {
         />
       )}
 
-      {/* 플로팅 액션 버튼 */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => {
-          setSelectedCategory('feeding');
-          setSheetVisible(true);
-        }}
-        activeOpacity={0.85}
-      >
-        <Plus color={colors.white} size={24} strokeWidth={2.5} />
-      </TouchableOpacity>
-
       {/* 빠른기록 바텀시트 */}
       <QuickRecordSheet
         visible={sheetVisible}
@@ -111,18 +106,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: layout.tabBarHeight + 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.elevated,
   },
 });
 

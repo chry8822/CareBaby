@@ -9,6 +9,7 @@ import {
 import type { TimelineItem } from '../../hooks/useHomeData';
 import { AppModal } from '../ui/AppModal';
 import { TimelineItemCard } from './TimelineItemCard';
+import { EditRecordSheet } from './EditRecordSheet';
 import {
   colors,
   typography,
@@ -19,15 +20,30 @@ import {
 
 interface TimelineListProps {
   timeline: TimelineItem[];
+  onRefresh?: () => Promise<void>;
 }
 
 const PREVIEW_COUNT = 5;
 
-export const TimelineList = ({ timeline }: TimelineListProps) => {
+export const TimelineList = ({ timeline, onRefresh }: TimelineListProps) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const [editingItem, setEditingItem] = useState<TimelineItem | null>(null);
 
   const preview = timeline.slice(0, PREVIEW_COUNT);
   const hasMore = timeline.length > PREVIEW_COUNT;
+
+  const handleItemPress = (item: TimelineItem) => {
+    setEditingItem(item);
+  };
+
+  const handleEditClose = () => {
+    setEditingItem(null);
+  };
+
+  const handleEditSave = async () => {
+    setEditingItem(null);
+    await onRefresh?.();
+  };
 
   return (
     <>
@@ -53,6 +69,7 @@ export const TimelineList = ({ timeline }: TimelineListProps) => {
             <TimelineItemCard
               key={`${item.type}-${item.time.getTime()}-${idx}`}
               item={item}
+              onPress={() => handleItemPress(item)}
             />
           ))
         )}
@@ -75,11 +92,23 @@ export const TimelineList = ({ timeline }: TimelineListProps) => {
             <TimelineItemCard
               key={`modal-${item.type}-${item.time.getTime()}-${idx}`}
               item={item}
+              onPress={() => {
+                setModalVisible(false);
+                // 모달이 닫힌 후 편집 시트 열기 (약간 딜레이)
+                setTimeout(() => handleItemPress(item), 300);
+              }}
             />
           ))}
           <View style={styles.modalPadding} />
         </ScrollView>
       </AppModal>
+
+      {/* 수정 바텀시트 */}
+      <EditRecordSheet
+        item={editingItem}
+        onClose={handleEditClose}
+        onSaveSuccess={handleEditSave}
+      />
     </>
   );
 };

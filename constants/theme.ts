@@ -8,6 +8,7 @@ export const colors = {
     sleep: '#7BA7A0',
     diaper: '#D4A95A',
     growth: '#9B8EC4',
+    meal: '#E8925A',
   },
   text: {
     primary: '#1A1A1A',

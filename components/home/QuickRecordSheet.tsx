@@ -4,9 +4,10 @@ import { BottomSheet } from '../ui/BottomSheet';
 import { FeedingForm } from '../records/FeedingForm';
 import { SleepForm } from '../records/SleepForm';
 import { DiaperForm } from '../records/DiaperForm';
+import { MealForm } from '../records/MealForm';
 import { colors, typography, spacing, borderRadius } from '../../constants/theme';
 
-type QuickCategory = 'feeding' | 'sleep' | 'diaper';
+export type QuickCategory = 'feeding' | 'meal' | 'sleep' | 'diaper';
 
 interface QuickRecordSheetProps {
   visible: boolean;
@@ -17,6 +18,7 @@ interface QuickRecordSheetProps {
 
 const CATEGORIES: { key: QuickCategory; label: string; color: string }[] = [
   { key: 'feeding', label: '수유', color: colors.activity.nursing },
+  { key: 'meal', label: '이유식', color: colors.activity.meal },
   { key: 'sleep', label: '수면', color: colors.activity.sleep },
   { key: 'diaper', label: '기저귀', color: colors.activity.diaper },
 ];
@@ -29,14 +31,9 @@ export const QuickRecordSheet = ({
 }: QuickRecordSheetProps) => {
   const [activeCategory, setActiveCategory] = useState<QuickCategory>(initialCategory);
 
-  // initialCategory가 바뀌면 activeCategory도 동기화
-  const handleOpen = (cat: QuickCategory) => {
-    setActiveCategory(cat);
-  };
-
   // visible이 true가 될 때 initialCategory 반영
   if (visible && activeCategory !== initialCategory) {
-    handleOpen(initialCategory);
+    setActiveCategory(initialCategory);
   }
 
   const activeColor =
@@ -46,7 +43,7 @@ export const QuickRecordSheet = ({
     <BottomSheet
       visible={visible}
       onClose={onClose}
-      snapPoints={['75%', '90%']}
+      snapPoints={['80%', '90%']}
       title="빠른 기록"
     >
       {/* 카테고리 탭 */}
@@ -58,7 +55,7 @@ export const QuickRecordSheet = ({
               key={cat.key}
               style={[
                 styles.tab,
-                isActive && { backgroundColor: cat.color },
+                isActive && { backgroundColor: cat.color, borderColor: cat.color },
               ]}
               onPress={() => setActiveCategory(cat.key)}
               activeOpacity={0.8}
@@ -76,11 +73,14 @@ export const QuickRecordSheet = ({
         {activeCategory === 'feeding' && (
           <FeedingForm onSaveSuccess={onSaveSuccess} />
         )}
+        {activeCategory === 'meal' && (
+          <MealForm onSaveSuccess={onSaveSuccess} />
+        )}
         {activeCategory === 'sleep' && (
           <SleepForm onSaveSuccess={onSaveSuccess} />
         )}
         {activeCategory === 'diaper' && (
-          <DiaperForm onSaveSuccess={onSaveSuccess} />
+          <DiaperForm onSaveSuccess={onSaveSuccess} autoSave />
         )}
       </View>
     </BottomSheet>
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   tabText: {
     ...typography.bodySemiBold,
     color: colors.text.secondary,
-    fontSize: 14,
+    fontSize: 13,
   },
   tabTextActive: {
     color: colors.white,

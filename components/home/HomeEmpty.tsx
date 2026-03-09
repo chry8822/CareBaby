@@ -1,6 +1,6 @@
 import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import { Droplets, Moon, Wind } from 'lucide-react-native';
+import { Droplets, Moon, Wind, Utensils } from 'lucide-react-native';
 import type { Baby } from '../../types/database';
 import {
   colors,
@@ -10,8 +10,7 @@ import {
   shadows,
 } from '../../constants/theme';
 import { getDaysSinceBirth, getGreeting } from '../../lib/timeUtils';
-
-type QuickCategory = 'feeding' | 'sleep' | 'diaper';
+import type { QuickCategory } from './QuickRecordSheet';
 
 interface QuickAction {
   label: string;
@@ -31,16 +30,16 @@ export const HomeEmpty = ({ baby, onQuickAction }: HomeEmptyProps) => {
 
   const quickActions: QuickAction[] = [
     {
-      label: '모유 수유',
+      label: '수유',
       icon: <Droplets size={24} color={colors.activity.nursing} strokeWidth={1.8} />,
       color: colors.activity.nursing,
       category: 'feeding',
     },
     {
-      label: '분유 수유',
-      icon: <Droplets size={24} color={colors.activity.nursing} strokeWidth={1.8} />,
-      color: colors.activity.nursing,
-      category: 'feeding',
+      label: '이유식',
+      icon: <Utensils size={24} color={colors.activity.meal} strokeWidth={1.8} />,
+      color: colors.activity.meal,
+      category: 'meal',
     },
     {
       label: '수면',
@@ -81,7 +80,7 @@ export const HomeEmpty = ({ baby, onQuickAction }: HomeEmptyProps) => {
       <View style={styles.ctaCard}>
         <View style={styles.ctaImageContainer}>
           <Image
-            source={require('../../assets/images/empty-records.png')}
+            source={require('../../assets/images/empty-home.png')}
             style={styles.ctaImage}
             resizeMode="contain"
           />
@@ -154,7 +153,7 @@ const styles = StyleSheet.create({
   ctaImageContainer: {
     width: 160,
     height: 120,
-    backgroundColor: colors.border,
+    // backgroundColor: colors.border,
     borderRadius: borderRadius.base,
     marginBottom: spacing.lg,
     overflow: 'hidden',
@@ -162,8 +161,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaImage: {
-    width: 160,
-    height: 120,
+    width: 180,
+    // height: 120,
   },
   ctaTitle: {
     ...typography.bodySemiBold,

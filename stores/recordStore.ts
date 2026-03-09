@@ -9,18 +9,20 @@ import type {
   SleepInsert,
   Diaper,
   DiaperInsert,
+  Meal,
+  MealInsert,
   FeedingType,
   AnyRecord,
 } from '../types/database';
 
 // ─── 오프라인 지원 ────────────────────────────────────────────────────────────
 
-type PendingRecordType = 'feeding' | 'sleep' | 'diaper';
+type PendingRecordType = 'feeding' | 'sleep' | 'diaper' | 'meal';
 
 interface PendingRecord {
   id: string;
   type: PendingRecordType;
-  data: FeedingInsert | SleepInsert | DiaperInsert;
+  data: FeedingInsert | SleepInsert | DiaperInsert | MealInsert;
   createdAt: string;
 }
 
@@ -74,6 +76,7 @@ interface RecordState {
   feedings: Feeding[];
   sleeps: Sleep[];
   diapers: Diaper[];
+  meals: Meal[];
   isLoading: boolean;
 
   activeTimer: ActiveTimer | null;
@@ -83,6 +86,7 @@ interface RecordState {
   saveFeeding: (data: FeedingInsert) => Promise<void>;
   saveSleep: (data: SleepInsert) => Promise<void>;
   saveDiaper: (data: DiaperInsert) => Promise<void>;
+  saveMeal: (data: MealInsert) => Promise<void>;
   deleteRecord: (type: PendingRecordType, id: string) => Promise<void>;
   getTimelineForDate: (date: Date) => AnyRecord[];
 
@@ -99,6 +103,7 @@ export const useRecordStore = create<RecordState>((set, get) => ({
   feedings: [],
   sleeps: [],
   diapers: [],
+  meals: [],
   isLoading: false,
   activeTimer: null,
   pendingSync: [],
@@ -233,12 +238,41 @@ export const useRecordStore = create<RecordState>((set, get) => ({
     }
   },
 
+  // ─── 이유식 저장 ───────────────────────────────────────────────────────────
+  saveMeal: async (data: MealInsert) => {
+    const idempotentData = { ...data, id: data.id ?? generateId() };
+    try {
+      const { data: meal, error } = await supabase
+        .from('meals')
+        .upsert(idempotentData)
+        .select()
+        .single();
+
+      if (error) throw error;
+      set((state) => ({
+        meals: [meal as Meal, ...state.meals.filter((m) => m.id !== (meal as Meal).id)],
+      }));
+    } catch (err) {
+      const pending: PendingRecord = {
+        id: idempotentData.id ?? generateId(),
+        type: 'meal',
+        data: idempotentData,
+        createdAt: new Date().toISOString(),
+      };
+      const updated = [...get().pendingSync, pending];
+      set({ pendingSync: updated });
+      await savePendingToStorage(updated);
+      throw err;
+    }
+  },
+
   // ─── 기록 삭제 ─────────────────────────────────────────────────────────────
   deleteRecord: async (type: PendingRecordType, id: string) => {
     const tableMap = {
       feeding: 'feedings',
       sleep: 'sleeps',
       diaper: 'diapers',
+      meal: 'meals',
     } as const;
 
     const { error } = await supabase.from(tableMap[type]).delete().eq('id', id);
@@ -248,8 +282,10 @@ export const useRecordStore = create<RecordState>((set, get) => ({
       set((state) => ({ feedings: state.feedings.filter((r) => r.id !== id) }));
     } else if (type === 'sleep') {
       set((state) => ({ sleeps: state.sleeps.filter((r) => r.id !== id) }));
-    } else {
+    } else if (type === 'diaper') {
       set((state) => ({ diapers: state.diapers.filter((r) => r.id !== id) }));
+    } else {
+      set((state) => ({ meals: state.meals.filter((r) => r.id !== id) }));
     }
   },
 

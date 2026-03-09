@@ -1,5 +1,5 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Droplets, Moon, Wind } from 'lucide-react-native';
+import { Droplets, Moon, Wind, Utensils } from 'lucide-react-native';
 import type { TimelineItem } from '../../hooks/useHomeData';
 import {
   colors,
@@ -7,7 +7,14 @@ import {
   spacing,
   borderRadius,
 } from '../../constants/theme';
-import { formatTime, formatDuration } from '../../lib/timeUtils';
+import { formatTime, formatDuration, formatElapsed } from '../../lib/timeUtils';
+
+const formatRelative = (date: Date | string): string => {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const sec = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (sec < 0) return '';
+  return formatElapsed(sec);
+};
 
 interface TimelineItemCardProps {
   item: TimelineItem;
@@ -32,6 +39,18 @@ const DIAPER_TYPE_LABELS: Record<string, string> = {
   both: '소+대변',
 };
 
+const MEAL_TYPE_LABELS: Record<string, string> = {
+  puree: '죽/퓨레',
+  finger_food: '핑거푸드',
+  snack: '간식',
+};
+
+const MEAL_REACTION_LABELS: Record<string, string> = {
+  good: '잘 먹음',
+  neutral: '보통',
+  refused: '거부',
+};
+
 export const TimelineItemCard = ({ item, onPress }: TimelineItemCardProps) => {
   const renderContent = () => {
     switch (item.type) {
@@ -40,6 +59,8 @@ export const TimelineItemCard = ({ item, onPress }: TimelineItemCardProps) => {
         const duration = item.data.duration_seconds
           ? formatDuration(item.data.duration_seconds)
           : null;
+        const amount = item.data.amount_ml ? `${item.data.amount_ml}ml` : null;
+        const sub = [duration, amount].filter(Boolean).join(' · ');
         return (
           <>
             <View style={[styles.dot, { backgroundColor: colors.activity.nursing }]} />
@@ -48,7 +69,7 @@ export const TimelineItemCard = ({ item, onPress }: TimelineItemCardProps) => {
             </View>
             <View style={styles.textGroup}>
               <Text style={styles.mainText}>수유 · {typeLabel}</Text>
-              {duration && <Text style={styles.subText}>{duration}</Text>}
+              {sub ? <Text style={styles.subText}>{sub}</Text> : null}
             </View>
           </>
         );
@@ -85,6 +106,26 @@ export const TimelineItemCard = ({ item, onPress }: TimelineItemCardProps) => {
           </>
         );
       }
+      case 'meal': {
+        const typeLabel = MEAL_TYPE_LABELS[item.data.meal_type] ?? item.data.meal_type;
+        const amount = item.data.amount_ml ? `${item.data.amount_ml}ml` : null;
+        const reaction = item.data.reaction
+          ? MEAL_REACTION_LABELS[item.data.reaction]
+          : null;
+        const sub = [amount, reaction].filter(Boolean).join(' · ');
+        return (
+          <>
+            <View style={[styles.dot, { backgroundColor: colors.activity.meal }]} />
+            <View style={styles.iconWrapper}>
+              <Utensils size={16} color={colors.activity.meal} strokeWidth={1.8} />
+            </View>
+            <View style={styles.textGroup}>
+              <Text style={styles.mainText}>이유식 · {typeLabel}</Text>
+              {sub ? <Text style={styles.subText}>{sub}</Text> : null}
+            </View>
+          </>
+        );
+      }
     }
   };
 
@@ -92,10 +133,13 @@ export const TimelineItemCard = ({ item, onPress }: TimelineItemCardProps) => {
     <TouchableOpacity
       style={styles.container}
       onPress={onPress}
-      activeOpacity={onPress ? 0.7 : 1}
+      activeOpacity={0.7}
     >
       <View style={styles.row}>{renderContent()}</View>
-      <Text style={styles.timeText}>{formatTime(item.time)}</Text>
+      <View style={styles.timeColumn}>
+        <Text style={styles.timeText}>{formatTime(item.time)}</Text>
+        <Text style={styles.relativeText}>{formatRelative(item.time)}</Text>
+      </View>
     </TouchableOpacity>
   );
 };
@@ -135,9 +179,19 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     marginTop: 2,
   },
+  timeColumn: {
+    alignItems: 'flex-end',
+    marginLeft: spacing.sm,
+    flexShrink: 0,
+  },
   timeText: {
     ...typography.caption,
     color: colors.text.secondary,
-    marginLeft: spacing.sm,
+  },
+  relativeText: {
+    fontSize: 11,
+    color: colors.text.secondary,
+    opacity: 0.7,
+    marginTop: 1,
   },
 });

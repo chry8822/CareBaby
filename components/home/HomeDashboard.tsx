@@ -1,51 +1,39 @@
 import {
   View,
   Text,
-  TouchableOpacity,
   ScrollView,
   StyleSheet,
   RefreshControl,
 } from 'react-native';
-import { router } from 'expo-router';
-import { Droplets, Moon, Wind, Plus } from 'lucide-react-native';
 import type { Baby } from '../../types/database';
 import type { HomeData } from '../../hooks/useHomeData';
 import {
   colors,
   typography,
   spacing,
-  borderRadius,
-  shadows,
 } from '../../constants/theme';
 import { getDaysSinceBirth, getGreeting, formatDuration } from '../../lib/timeUtils';
 import { BabyAvatar } from './BabyAvatar';
 import { InsightCard } from './InsightCard';
 import { TimerCardList } from './TimerCardList';
 import { TimelineList } from './TimelineList';
+import type { QuickCategory } from './QuickRecordSheet';
 
-type QuickCategory = 'feeding' | 'sleep' | 'diaper';
-
-// HomeData에서 refresh와 isLoading만 추출하는 타입
 type HomeDashboardProps = {
   baby: Baby;
   onQuickAction?: (category: QuickCategory) => void;
 } & HomeData;
-
-const QUICK_ACTIONS: { label: string; icon: React.ReactNode; color: string; category: QuickCategory }[] = [
-  { label: '모유', icon: <Droplets size={18} color={colors.activity.nursing} strokeWidth={1.8} />, color: colors.activity.nursing, category: 'feeding' },
-  { label: '분유', icon: <Droplets size={18} color={colors.activity.nursing} strokeWidth={1.8} />, color: colors.activity.nursing, category: 'feeding' },
-  { label: '수면', icon: <Moon size={18} color={colors.activity.sleep} strokeWidth={1.8} />, color: colors.activity.sleep, category: 'sleep' },
-  { label: '기저귀', icon: <Wind size={18} color={colors.activity.diaper} strokeWidth={1.8} />, color: colors.activity.diaper, category: 'diaper' },
-];
 
 export const HomeDashboard = ({
   baby,
   lastFeeding,
   lastSleep,
   lastDiaper,
+  lastMeal,
   feedingElapsed,
   sleepElapsed,
   diaperElapsed,
+  mealElapsed,
   todaySummary,
   insight,
   timeline,
@@ -56,23 +44,16 @@ export const HomeDashboard = ({
   const greeting = getGreeting();
   const daysSince = getDaysSinceBirth(baby.birth_date);
 
-  const handleQuickAction = (category: QuickCategory) => {
-    if (onQuickAction) {
-      onQuickAction(category);
-    } else {
-      router.push(`/(tabs)/record?category=${category}` as never);
-    }
-  };
-
-  const summaryText = [
+  const summaryParts: string[] = [
     `수유 ${todaySummary.feedingCount}회`,
+    todaySummary.mealCount > 0 ? `이유식 ${todaySummary.mealCount}회` : null,
     todaySummary.totalSleepSeconds > 0
       ? `수면 ${formatDuration(todaySummary.totalSleepSeconds)}`
       : null,
     `기저귀 ${todaySummary.diaperCount}회`,
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  ].filter(Boolean) as string[];
+
+  const summaryText = summaryParts.join(' · ');
 
   return (
     <ScrollView
@@ -86,7 +67,7 @@ export const HomeDashboard = ({
         />
       }
     >
-      {/* 5-1. 헤더 */}
+      {/* 헤더 */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.greetingText}>{greeting}</Text>
@@ -96,68 +77,29 @@ export const HomeDashboard = ({
         <BabyAvatar uri={baby.avatar_url} size={52} />
       </View>
 
-      {/* 5-2. 타이머 카드 (수평 스크롤, 패딩 없이 full-bleed) */}
+      {/* 타이머 카드 (수평 스크롤) */}
       <TimerCardList
         lastFeeding={lastFeeding}
         lastSleep={lastSleep}
         lastDiaper={lastDiaper}
+        lastMeal={lastMeal}
         feedingElapsed={feedingElapsed}
         sleepElapsed={sleepElapsed}
         diaperElapsed={diaperElapsed}
+        mealElapsed={mealElapsed}
         onCardPress={onQuickAction}
       />
 
-      {/* 이하 섹션은 수평 패딩 */}
+      {/* 패딩 콘텐츠 */}
       <View style={styles.paddedContent}>
-        {/* 5-3. 오늘 요약 한 줄 */}
+        {/* 오늘 요약 */}
         <Text style={styles.summaryText}>{summaryText}</Text>
 
-        {/* 5-4. AI 인사이트 카드 */}
+        {/* AI 인사이트 카드 */}
         <InsightCard insight={insight} />
 
-        {/* 5-5. 타임라인 */}
-        <TimelineList timeline={timeline} />
-
-        {/* 5-6. 빠른 기록 버튼 (1행 수평 스크롤) */}
-        <Text style={styles.sectionLabel}>빠른 기록</Text>
-      </View>
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.quickScrollContent}
-        style={styles.quickScroll}
-      >
-        {QUICK_ACTIONS.map((action) => (
-          <TouchableOpacity
-            key={action.label}
-            style={styles.quickBtn}
-            onPress={() => handleQuickAction(action.category)}
-            activeOpacity={0.85}
-          >
-            <View style={[styles.quickBtnIcon, { backgroundColor: `${action.color}1A` }]}>
-              {action.icon}
-            </View>
-            <Text style={styles.quickBtnLabel}>{action.label}</Text>
-          </TouchableOpacity>
-        ))}
-
-        {/* [+] 전체 기록 탭으로 이동 */}
-        <TouchableOpacity
-          style={styles.quickBtn}
-          onPress={() => router.push('/(tabs)/record' as never)}
-          activeOpacity={0.85}
-        >
-          <View style={[styles.quickBtnIcon, { backgroundColor: colors.border }]}>
-            <Plus size={18} color={colors.text.secondary} strokeWidth={1.8} />
-          </View>
-          <Text style={styles.quickBtnLabel}>더보기</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
-      {/* 5-7. 광고 배너 자리 (Phase 7 AdMob 연동 예정) */}
-      <View style={styles.adBanner}>
-        {/* AdMob 배너 광고 - Phase 7 */}
+        {/* 타임라인 — onRefresh 전달 */}
+        <TimelineList timeline={timeline} onRefresh={refresh} />
       </View>
     </ScrollView>
   );
@@ -199,42 +141,5 @@ const styles = StyleSheet.create({
     ...typography.bodyRegular,
     color: colors.text.secondary,
     marginBottom: spacing.lg,
-  },
-  sectionLabel: {
-    ...typography.bodySemiBold,
-    color: colors.text.primary,
-    marginBottom: spacing.md,
-  },
-  quickScroll: {
-    marginBottom: spacing.lg,
-  },
-  quickScrollContent: {
-    paddingHorizontal: spacing.screenPadding,
-    gap: spacing.sm,
-  },
-  quickBtn: {
-    alignItems: 'center',
-    minWidth: 60,
-  },
-  quickBtnIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.xs,
-    ...shadows.card,
-  },
-  quickBtnLabel: {
-    ...typography.caption,
-    color: colors.text.primary,
-  },
-  adBanner: {
-    height: 52,
-    marginHorizontal: spacing.screenPadding,
-    marginBottom: spacing.xxl,
-    backgroundColor: colors.border,
-    borderRadius: borderRadius.base,
-    // Phase 7: AdMob 배너 광고 영역
   },
 });

@@ -2,12 +2,12 @@ import {
   View,
   Text,
   TouchableOpacity,
-  ScrollView,
+  FlatList,
   StyleSheet,
 } from 'react-native';
 import { router } from 'expo-router';
-import { Droplets, Moon, Wind } from 'lucide-react-native';
-import type { Feeding, Sleep, Diaper } from '../../types/database';
+import { Droplets, Moon, Wind, Utensils } from 'lucide-react-native';
+import type { Feeding, Sleep, Diaper, Meal } from '../../types/database';
 import {
   colors,
   typography,
@@ -16,16 +16,17 @@ import {
   shadows,
 } from '../../constants/theme';
 import { formatElapsed } from '../../lib/timeUtils';
-
-type QuickCategory = 'feeding' | 'sleep' | 'diaper';
+import type { QuickCategory } from './QuickRecordSheet';
 
 interface TimerCardListProps {
   lastFeeding: Feeding | null;
   lastSleep: Sleep | null;
   lastDiaper: Diaper | null;
+  lastMeal: Meal | null;
   feedingElapsed: number;
   sleepElapsed: number;
   diaperElapsed: number;
+  mealElapsed: number;
   onCardPress?: (category: QuickCategory) => void;
 }
 
@@ -43,25 +44,36 @@ export const TimerCardList = ({
   lastFeeding,
   lastSleep,
   lastDiaper,
+  lastMeal,
   feedingElapsed,
   sleepElapsed,
   diaperElapsed,
+  mealElapsed,
   onCardPress,
 }: TimerCardListProps) => {
   const cards: TimerCardData[] = [
     {
       key: 'feeding',
       label: '수유',
-      icon: <Droplets size={28} color={colors.activity.nursing} strokeWidth={1.8} />,
+      icon: <Droplets size={24} color={colors.activity.nursing} strokeWidth={1.8} />,
       color: colors.activity.nursing,
       elapsed: feedingElapsed,
       hasRecord: !!lastFeeding,
       category: 'feeding',
     },
     {
+      key: 'meal',
+      label: '이유식',
+      icon: <Utensils size={24} color={colors.activity.meal} strokeWidth={1.8} />,
+      color: colors.activity.meal,
+      elapsed: mealElapsed,
+      hasRecord: !!lastMeal,
+      category: 'meal',
+    },
+    {
       key: 'sleep',
       label: '수면',
-      icon: <Moon size={28} color={colors.activity.sleep} strokeWidth={1.8} />,
+      icon: <Moon size={24} color={colors.activity.sleep} strokeWidth={1.8} />,
       color: colors.activity.sleep,
       elapsed: sleepElapsed,
       hasRecord: !!lastSleep,
@@ -70,7 +82,7 @@ export const TimerCardList = ({
     {
       key: 'diaper',
       label: '기저귀',
-      icon: <Wind size={28} color={colors.activity.diaper} strokeWidth={1.8} />,
+      icon: <Wind size={24} color={colors.activity.diaper} strokeWidth={1.8} />,
       color: colors.activity.diaper,
       elapsed: diaperElapsed,
       hasRecord: !!lastDiaper,
@@ -87,67 +99,91 @@ export const TimerCardList = ({
   };
 
   return (
-    <ScrollView
+    <FlatList
       horizontal
+      data={cards}
+      keyExtractor={(item) => item.key}
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.scrollContent}
       style={styles.scroll}
-    >
-      {cards.map((card) => (
+      renderItem={({ item: card }) => (
         <TouchableOpacity
-          key={card.key}
           style={styles.card}
           onPress={() => handlePress(card.category)}
-          activeOpacity={0.85}
+          activeOpacity={0.82}
         >
-          <View style={[styles.iconBadge, { backgroundColor: `${card.color}1A` }]}>
-            {card.icon}
+          {/* 상단: 아이콘 + 라벨 */}
+          <View style={styles.cardTop}>
+            <View style={[styles.iconBadge, { backgroundColor: `${card.color}1A` }]}>
+              {card.icon}
+            </View>
+            <Text style={styles.cardLabel}>{card.label}</Text>
           </View>
-          <Text style={styles.cardLabel}>{card.label}</Text>
-          <Text style={[styles.elapsedText, !card.hasRecord && styles.emptyText]}>
-            {card.hasRecord ? `마지막 ${formatElapsed(card.elapsed)}` : '아직 없어요'}
-          </Text>
+
+          {/* 하단: 경과 시간 */}
+          <View style={styles.cardBottom}>
+            {card.hasRecord ? (
+              <Text style={[styles.elapsedText, { color: card.color }]} numberOfLines={2}>
+                {formatElapsed(card.elapsed)}
+              </Text>
+            ) : (
+              <Text style={styles.emptyText} numberOfLines={1}>아직 없어요</Text>
+            )}
+          </View>
         </TouchableOpacity>
-      ))}
-    </ScrollView>
+      )}
+    />
   );
 };
 
+const CARD_WIDTH = 152;
+
 const styles = StyleSheet.create({
   scroll: {
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   scrollContent: {
     paddingHorizontal: spacing.screenPadding,
-    gap: spacing.md,
+    paddingVertical: 8,
+    gap: spacing.sm,
   },
   card: {
-    width: 130,
+    width: CARD_WIDTH,
     backgroundColor: colors.bg.elevated,
     borderRadius: borderRadius.card,
-    padding: spacing.cardPadding,
-    alignItems: 'center',
+    padding: 14, 
     ...shadows.card,
   },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
   iconBadge: {
-    width: 56,
-    height: 56,
+    width: 40,
+    height: 40,
     borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.sm,
+    flexShrink: 0,
   },
   cardLabel: {
     ...typography.bodySemiBold,
     color: colors.text.primary,
-    marginBottom: spacing.xs,
+    flexShrink: 1,
+  },
+  cardBottom: {
+    minHeight: 32,
+    justifyContent: 'center',
   },
   elapsedText: {
-    ...typography.caption,
-    color: colors.accent,
-    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
   },
   emptyText: {
+    ...typography.caption,
     color: colors.text.secondary,
   },
 });

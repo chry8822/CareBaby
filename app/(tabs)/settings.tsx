@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { LogOut, User, Bell, Shield, Users, ChevronRight, Baby, Edit3 } from 'lucide-react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { useBabyStore } from '../../stores/babyStore';
 import { useUIStore } from '../../stores/uiStore';
@@ -36,12 +36,19 @@ const SettingsScreen = () => {
   const myCaretaker = caretakers.find((c) => c.profile_id === profile?.id);
   const isOwner = myCaretaker?.role === 'owner';
 
-  const navLock = useRef(false);
+  const navigating = useRef(false);
+
+  // 화면이 다시 포커스를 받을 때(= baby-setup에서 돌아올 때) 락 해제
+  useFocusEffect(
+    useCallback(() => {
+      navigating.current = false;
+    }, [])
+  );
+
   const navigateToBabySetup = useCallback((mode?: string) => {
-    if (navLock.current) return;
-    navLock.current = true;
+    if (navigating.current) return;
+    navigating.current = true;
     router.push(mode ? `/baby-setup?mode=${mode}` : '/baby-setup');
-    setTimeout(() => { navLock.current = false; }, 600);
   }, []);
 
   useEffect(() => {

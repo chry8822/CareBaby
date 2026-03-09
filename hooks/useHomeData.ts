@@ -1,30 +1,34 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useRealtime } from './useRealtime';
-import type { Feeding, Sleep, Diaper } from '../types/database';
+import type { Feeding, Sleep, Diaper, Meal } from '../types/database';
 
 // ─── 공개 타입 ─────────────────────────────────────────────────────────────────
 
 export type TimelineItem =
   | { type: 'feeding'; data: Feeding; time: Date }
   | { type: 'sleep'; data: Sleep; time: Date }
-  | { type: 'diaper'; data: Diaper; time: Date };
+  | { type: 'diaper'; data: Diaper; time: Date }
+  | { type: 'meal'; data: Meal; time: Date };
 
 interface TodaySummary {
   feedingCount: number;
   totalSleepSeconds: number;
   diaperCount: number;
+  mealCount: number;
 }
 
 export interface HomeData {
   lastFeeding: Feeding | null;
   lastSleep: Sleep | null;
   lastDiaper: Diaper | null;
+  lastMeal: Meal | null;
 
   // 경과 시간 (초), 1초마다 업데이트
   feedingElapsed: number;
   sleepElapsed: number;
   diaperElapsed: number;
+  mealElapsed: number;
 
   todaySummary: TodaySummary;
 
@@ -37,11 +41,6 @@ export interface HomeData {
 }
 
 // ─── 헬퍼 ──────────────────────────────────────────────────────────────────────
-
-function calcElapsed(isoString: string | null): number {
-  if (!isoString) return 0;
-  return Math.floor((Date.now() - new Date(isoString).getTime()) / 1000);
-}
 
 function getTodayStart(): string {
   const now = new Date();
@@ -57,15 +56,18 @@ export function useHomeData(babyId: string | null): HomeData {
   const [lastFeeding, setLastFeeding] = useState<Feeding | null>(null);
   const [lastSleep, setLastSleep] = useState<Sleep | null>(null);
   const [lastDiaper, setLastDiaper] = useState<Diaper | null>(null);
+  const [lastMeal, setLastMeal] = useState<Meal | null>(null);
 
   const [feedingElapsed, setFeedingElapsed] = useState(0);
   const [sleepElapsed, setSleepElapsed] = useState(0);
   const [diaperElapsed, setDiaperElapsed] = useState(0);
+  const [mealElapsed, setMealElapsed] = useState(0);
 
   const [todaySummary, setTodaySummary] = useState<TodaySummary>({
     feedingCount: 0,
     totalSleepSeconds: 0,
     diaperCount: 0,
+    mealCount: 0,
   });
 
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
@@ -75,6 +77,7 @@ export function useHomeData(babyId: string | null): HomeData {
   const feedingTimeRef = useRef<number | null>(null);
   const sleepTimeRef = useRef<number | null>(null);
   const diaperTimeRef = useRef<number | null>(null);
+  const mealTimeRef = useRef<number | null>(null);
 
   const fetch = useCallback(async () => {
     if (!babyId) return;
@@ -83,7 +86,7 @@ export function useHomeData(babyId: string | null): HomeData {
     try {
       const todayStart = getTodayStart();
 
-      const [feedRes, sleepRes, diaperRes] = await Promise.all([
+      const [feedRes, sleepRes, diaperRes, mealRes] = await Promise.all([
         supabase
           .from('feedings')
           .select('*')
@@ -102,20 +105,31 @@ export function useHomeData(babyId: string | null): HomeData {
           .eq('baby_id', babyId)
           .gte('occurred_at', todayStart)
           .order('occurred_at', { ascending: false }),
+        // meals 테이블은 선택적 — 없어도 앱이 작동해야 함
+        supabase
+          .from('meals')
+          .select('*')
+          .eq('baby_id', babyId)
+          .gte('occurred_at', todayStart)
+          .order('occurred_at', { ascending: false })
+          .then((res) => (res.error ? { data: [] } : res)),
       ]);
 
       const feedings: Feeding[] = feedRes.data ?? [];
       const sleeps: Sleep[] = sleepRes.data ?? [];
       const diapers: Diaper[] = diaperRes.data ?? [];
+      const meals: Meal[] = (mealRes as { data: Meal[] }).data ?? [];
 
       // 마지막 기록
       const latestFeeding = feedings[0] ?? null;
       const latestSleep = sleeps[0] ?? null;
       const latestDiaper = diapers[0] ?? null;
+      const latestMeal = meals[0] ?? null;
 
       setLastFeeding(latestFeeding);
       setLastSleep(latestSleep);
       setLastDiaper(latestDiaper);
+      setLastMeal(latestMeal);
 
       // elapsed ref 업데이트
       feedingTimeRef.current = latestFeeding
@@ -126,6 +140,9 @@ export function useHomeData(babyId: string | null): HomeData {
         : null;
       diaperTimeRef.current = latestDiaper
         ? new Date(latestDiaper.occurred_at).getTime()
+        : null;
+      mealTimeRef.current = latestMeal
+        ? new Date(latestMeal.occurred_at).getTime()
         : null;
 
       // 초기 elapsed 설정
@@ -144,6 +161,11 @@ export function useHomeData(babyId: string | null): HomeData {
           ? Math.floor((Date.now() - diaperTimeRef.current) / 1000)
           : 0,
       );
+      setMealElapsed(
+        mealTimeRef.current
+          ? Math.floor((Date.now() - mealTimeRef.current) / 1000)
+          : 0,
+      );
 
       // 오늘 요약
       const totalSleepSeconds = sleeps.reduce(
@@ -154,6 +176,7 @@ export function useHomeData(babyId: string | null): HomeData {
         feedingCount: feedings.length,
         totalSleepSeconds,
         diaperCount: diapers.length,
+        mealCount: meals.length,
       });
 
       // 타임라인 합치기 (최신순 정렬)
@@ -177,6 +200,13 @@ export function useHomeData(babyId: string | null): HomeData {
             type: 'diaper',
             data: d,
             time: new Date(d.occurred_at),
+          }),
+        ),
+        ...meals.map(
+          (m): TimelineItem => ({
+            type: 'meal',
+            data: m,
+            time: new Date(m.occurred_at),
           }),
         ),
       ].sort((a, b) => b.time.getTime() - a.time.getTime());
@@ -212,12 +242,17 @@ export function useHomeData(babyId: string | null): HomeData {
           ? Math.floor((Date.now() - diaperTimeRef.current) / 1000)
           : 0,
       );
+      setMealElapsed(
+        mealTimeRef.current
+          ? Math.floor((Date.now() - mealTimeRef.current) / 1000)
+          : 0,
+      );
     }, 1000);
 
     return () => clearInterval(interval);
   }, []);
 
-  // Realtime 구독: 다른 기기에서 기록 변경 시 자동 갱신 (목표: 2초 이내)
+  // Realtime 구독: 다른 기기에서 기록 변경 시 자동 갱신
   useRealtime({
     babyId,
     onFeedingChange: fetch,
@@ -229,11 +264,13 @@ export function useHomeData(babyId: string | null): HomeData {
     lastFeeding,
     lastSleep,
     lastDiaper,
+    lastMeal,
     feedingElapsed,
     sleepElapsed,
     diaperElapsed,
+    mealElapsed,
     todaySummary,
-    insight: null, // Phase 4에서 실제 AI 인사이트로 교체
+    insight: null,
     timeline,
     isLoading,
     refresh: fetch,

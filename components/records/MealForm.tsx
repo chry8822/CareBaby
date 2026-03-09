@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Calendar, Trash2 } from 'lucide-react-native';
 import { WheelTimePicker } from '../ui/WheelTimePicker';
+import { SliderInput } from '../ui/SliderInput';
 import { useAuthStore } from '../../stores/authStore';
 import { useBabyStore } from '../../stores/babyStore';
 import { useRecordStore } from '../../stores/recordStore';
@@ -18,39 +19,49 @@ import { useUIStore } from '../../stores/uiStore';
 import { Chip } from '../ui/Chip';
 import { SaveButton } from '../ui/SaveButton';
 import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
-import type { DiaperType, Diaper } from '../../types/database';
+import type { MealType, MealReaction, Meal } from '../../types/database';
 
-const DIAPER_TYPES: { key: DiaperType; label: string }[] = [
-  { key: 'wet', label: '소변' },
-  { key: 'dirty', label: '대변' },
-  { key: 'both', label: '소+대변' },
+const MEAL_TYPES: { key: MealType; label: string }[] = [
+  { key: 'puree', label: '죽/퓨레' },
+  { key: 'finger_food', label: '핑거푸드' },
+  { key: 'snack', label: '간식' },
 ];
 
-const MEMO_CHIPS = ['색이 이상함', '냄새 심함', '피가 섞임', '점액질'];
+const REACTIONS: { key: MealReaction; label: string }[] = [
+  { key: 'good', label: '잘 먹음' },
+  { key: 'neutral', label: '보통' },
+  { key: 'refused', label: '거부' },
+];
 
-const DIAPER_COLOR = colors.activity.diaper;
+const MEMO_CHIPS = ['처음 먹어봄', '알레르기 반응', '더 달라고 함', '게워냄'];
+const MEAL_COLOR = colors.activity.meal;
 
-interface DiaperFormProps {
+const formatAmountMl = (ml: number): string => {
+  if (ml === 0) return '미입력';
+  return `${ml}ml`;
+};
+
+interface MealFormProps {
   onSaveSuccess?: () => void;
-  initialRecord?: Diaper;
+  initialRecord?: Meal;
   onDelete?: () => void;
-  /** true이면 종류 탭 선택 즉시 저장 (빠른기록 모드) */
-  autoSave?: boolean;
 }
 
-export const DiaperForm = ({ onSaveSuccess, initialRecord, onDelete, autoSave = false }: DiaperFormProps) => {
+export const MealForm = ({ onSaveSuccess, initialRecord, onDelete }: MealFormProps) => {
   const { user } = useAuthStore();
   const { currentBaby } = useBabyStore();
-  const { saveDiaper, deleteRecord } = useRecordStore();
+  const { saveMeal, deleteRecord } = useRecordStore();
   const { showToast, showModal, hideModal } = useUIStore();
 
   const isEditMode = !!initialRecord;
 
-  const [diaperType, setDiaperType] = useState<DiaperType>(initialRecord?.diaper_type ?? 'wet');
+  const [mealType, setMealType] = useState<MealType>(initialRecord?.meal_type ?? 'puree');
   const [occurredAt, setOccurredAt] = useState(
     initialRecord ? new Date(initialRecord.occurred_at) : new Date(),
   );
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [amountValue, setAmountValue] = useState<number>(initialRecord?.amount_ml ?? 0);
+  const [reaction, setReaction] = useState<MealReaction | null>(initialRecord?.reaction ?? null);
   const [selectedMemos, setSelectedMemos] = useState<string[]>(initialRecord?.memo_tags ?? []);
   const [customMemo, setCustomMemo] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -62,50 +73,13 @@ export const DiaperForm = ({ onSaveSuccess, initialRecord, onDelete, autoSave = 
     );
   }, []);
 
-  const handleDateTimeConfirm = (date: Date) => {
+  const handleTimeConfirm = (date: Date) => {
     setOccurredAt(date);
-    setShowDatePicker(false);
+    setShowTimePicker(false);
   };
 
-  const formatDateTime = (date: Date): string => {
-    const today = new Date();
-    const isToday =
-      date.getFullYear() === today.getFullYear() &&
-      date.getMonth() === today.getMonth() &&
-      date.getDate() === today.getDate();
-
-    const timeStr = date.toLocaleTimeString('ko-KR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-    if (isToday) return `오늘 ${timeStr}`;
-
-    return date.toLocaleDateString('ko-KR', {
-      month: 'short',
-      day: 'numeric',
-    }) + ` ${timeStr}`;
-  };
-
-  const handleAutoSave = async (type: DiaperType) => {
-    if (!user || !currentBaby) return;
-    setIsSaving(true);
-    try {
-      await saveDiaper({
-        baby_id: currentBaby.id,
-        recorded_by: user.id,
-        diaper_type: type,
-        occurred_at: new Date().toISOString(),
-        memo_tags: null,
-        note: null,
-      });
-      showToast('기저귀 기록이 저장되었어요', 'success');
-      onSaveSuccess?.();
-    } catch {
-      showToast('저장에 실패했어요', 'error');
-    } finally {
-      setIsSaving(false);
-    }
+  const formatTime = (date: Date): string => {
+    return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
   };
 
   const handleSave = async () => {
@@ -131,12 +105,14 @@ export const DiaperForm = ({ onSaveSuccess, initialRecord, onDelete, autoSave = 
 
     setIsSaving(true);
     try {
-      await saveDiaper({
+      await saveMeal({
         ...(isEditMode && initialRecord?.id ? { id: initialRecord.id } : {}),
         baby_id: currentBaby.id,
         recorded_by: user.id,
-        diaper_type: diaperType,
+        meal_type: mealType,
         occurred_at: occurredAt.toISOString(),
+        amount_ml: amountValue > 0 ? amountValue : null,
+        reaction: reaction,
         memo_tags: allMemos.length > 0 ? allMemos : null,
         note: null,
       });
@@ -147,7 +123,8 @@ export const DiaperForm = ({ onSaveSuccess, initialRecord, onDelete, autoSave = 
     } catch {
       showModal({
         title: isEditMode ? '수정 실패' : '저장 실패',
-        message: '기록 저장에 실패했어요. 오프라인 상태에서는 나중에 자동으로 동기화돼요.',
+        message:
+          '기록 저장에 실패했어요.\n\n⚠️ Supabase에 meals 테이블이 없을 수 있어요. DB 마이그레이션을 확인하세요.',
         primaryAction: { label: '확인', onPress: hideModal },
       });
     } finally {
@@ -166,7 +143,7 @@ export const DiaperForm = ({ onSaveSuccess, initialRecord, onDelete, autoSave = 
           hideModal();
           setIsSaving(true);
           try {
-            await deleteRecord('diaper', initialRecord.id);
+            await deleteRecord('meal', initialRecord.id);
             showToast('기록이 삭제되었어요', 'success');
             onDelete?.();
             onSaveSuccess?.();
@@ -186,8 +163,10 @@ export const DiaperForm = ({ onSaveSuccess, initialRecord, onDelete, autoSave = 
   };
 
   const resetForm = () => {
-    setDiaperType('wet');
+    setMealType('puree');
     setOccurredAt(new Date());
+    setAmountValue(0);
+    setReaction(null);
     setSelectedMemos([]);
     setCustomMemo('');
     setShowCustomInput(false);
@@ -205,52 +184,80 @@ export const DiaperForm = ({ onSaveSuccess, initialRecord, onDelete, autoSave = 
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* 기저귀 타입 */}
+        {/* 이유식 종류 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            {autoSave ? '종류를 선택하면 바로 저장돼요' : '기저귀 종류'}
-          </Text>
+          <Text style={styles.sectionTitle}>이유식 종류</Text>
           <View style={styles.chipRow}>
-            {DIAPER_TYPES.map((dt) => (
+            {MEAL_TYPES.map((mt) => (
               <Chip
-                key={dt.key}
-                label={dt.label}
-                selected={diaperType === dt.key}
-                onPress={() => {
-                  setDiaperType(dt.key);
-                  if (autoSave) handleAutoSave(dt.key);
-                }}
-                color={DIAPER_COLOR}
+                key={mt.key}
+                label={mt.label}
+                selected={mealType === mt.key}
+                onPress={() => setMealType(mt.key)}
+                color={MEAL_COLOR}
               />
             ))}
           </View>
         </View>
 
-        {/* 발생 시간 */}
+        {/* 식사 시간 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>발생 시간</Text>
+          <Text style={styles.sectionTitle}>식사 시간</Text>
           <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowDatePicker(true)}
+            style={styles.timeButton}
+            onPress={() => setShowTimePicker(true)}
             activeOpacity={0.8}
           >
-            <Calendar color={DIAPER_COLOR} size={20} />
-            <Text style={styles.dateButtonText}>{formatDateTime(occurredAt)}</Text>
+            <Calendar size={18} color={MEAL_COLOR} />
+            <Text style={styles.timeButtonText}>{formatTime(occurredAt)}</Text>
+            <Text style={styles.timeButtonLabel}>탭하여 변경</Text>
           </TouchableOpacity>
           <WheelTimePicker
-            visible={showDatePicker}
+            visible={showTimePicker}
             value={occurredAt}
-            onConfirm={handleDateTimeConfirm}
-            onCancel={() => setShowDatePicker(false)}
-            accentColor={DIAPER_COLOR}
-            title="발생 시간 선택"
-            mode="datetime"
+            onConfirm={handleTimeConfirm}
+            onCancel={() => setShowTimePicker(false)}
+            accentColor={MEAL_COLOR}
+            title="식사 시간 선택"
           />
         </View>
 
-        {/* 특이사항 */}
+        {/* 섭취량 슬라이더 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>특이사항</Text>
+          <Text style={styles.sectionTitle}>섭취량</Text>
+          <View style={styles.sliderCard}>
+            <SliderInput
+              value={amountValue}
+              min={0}
+              max={300}
+              step={10}
+              onChange={setAmountValue}
+              formatLabel={formatAmountMl}
+              unit="ml"
+              color={MEAL_COLOR}
+            />
+          </View>
+        </View>
+
+        {/* 반응 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>반응</Text>
+          <View style={styles.chipRow}>
+            {REACTIONS.map((r) => (
+              <Chip
+                key={r.key}
+                label={r.label}
+                selected={reaction === r.key}
+                onPress={() => setReaction((prev) => (prev === r.key ? null : r.key))}
+                color={MEAL_COLOR}
+              />
+            ))}
+          </View>
+        </View>
+
+        {/* 빠른 메모 */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>빠른 메모</Text>
           <View style={styles.chipRow}>
             {MEMO_CHIPS.map((memo) => (
               <Chip
@@ -258,7 +265,7 @@ export const DiaperForm = ({ onSaveSuccess, initialRecord, onDelete, autoSave = 
                 label={memo}
                 selected={selectedMemos.includes(memo)}
                 onPress={() => toggleMemo(memo)}
-                color={DIAPER_COLOR}
+                color={MEAL_COLOR}
               />
             ))}
             <Chip
@@ -273,14 +280,14 @@ export const DiaperForm = ({ onSaveSuccess, initialRecord, onDelete, autoSave = 
               style={styles.customMemoInput}
               value={customMemo}
               onChangeText={setCustomMemo}
-              placeholder="특이사항을 입력하세요"
+              placeholder="메모를 입력하세요"
               placeholderTextColor={colors.text.secondary}
               maxLength={50}
             />
           ) : null}
         </View>
 
-        {!autoSave && <View style={styles.saveArea}>
+        <View style={styles.saveArea}>
           {isEditMode ? (
             <View style={styles.editButtons}>
               <TouchableOpacity
@@ -296,31 +303,27 @@ export const DiaperForm = ({ onSaveSuccess, initialRecord, onDelete, autoSave = 
                 <SaveButton
                   onPress={handleSave}
                   isLoading={isSaving}
-                  color={DIAPER_COLOR}
+                  color={MEAL_COLOR}
                   label="수정 저장"
                 />
               </View>
             </View>
           ) : (
-            <SaveButton onPress={handleSave} isLoading={isSaving} color={DIAPER_COLOR} />
+            <SaveButton onPress={handleSave} isLoading={isSaving} color={MEAL_COLOR} />
           )}
-        </View>}
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  flex: {
-    flex: 1,
-  },
+  flex: { flex: 1 },
   content: {
     padding: spacing.screenPadding,
     paddingBottom: 40,
   },
-  section: {
-    marginBottom: spacing.sectionGap,
-  },
+  section: { marginBottom: spacing.sectionGap },
   sectionTitle: {
     ...typography.bodySemiBold,
     color: colors.text.primary,
@@ -331,18 +334,32 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  dateButton: {
+  timeButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md,
+    gap: spacing.sm,
+    backgroundColor: colors.bg.elevated,
+    borderRadius: borderRadius.base,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.card,
+  },
+  timeButtonText: {
+    ...typography.bodySemiBold,
+    color: colors.text.primary,
+    flex: 1,
+  },
+  timeButtonLabel: {
+    ...typography.caption,
+    color: colors.text.secondary,
+  },
+  sliderCard: {
     backgroundColor: colors.bg.elevated,
     borderRadius: borderRadius.base,
     padding: spacing.xl,
+    paddingHorizontal: spacing.screenPadding,
     ...shadows.card,
-  },
-  dateButtonText: {
-    ...typography.bodySemiBold,
-    color: colors.text.primary,
   },
   customMemoInput: {
     marginTop: spacing.sm,
@@ -355,9 +372,7 @@ const styles = StyleSheet.create({
     ...typography.bodyRegular,
     color: colors.text.primary,
   },
-  saveArea: {
-    marginTop: spacing.sm,
-  },
+  saveArea: { marginTop: spacing.sm },
   editButtons: {
     flexDirection: 'row',
     gap: spacing.sm,

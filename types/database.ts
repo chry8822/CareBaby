@@ -189,6 +189,41 @@ export type Database = {
         };
         Relationships: [];
       };
+      meals: {
+        Row: {
+          id: string;
+          baby_id: string;
+          recorded_by: string;
+          meal_type: 'puree' | 'finger_food' | 'snack';
+          occurred_at: string;
+          amount_ml: number | null;
+          reaction: 'good' | 'neutral' | 'refused' | null;
+          memo_tags: string[] | null;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          baby_id: string;
+          recorded_by: string;
+          meal_type: 'puree' | 'finger_food' | 'snack';
+          occurred_at: string;
+          amount_ml?: number | null;
+          reaction?: 'good' | 'neutral' | 'refused' | null;
+          memo_tags?: string[] | null;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          meal_type?: 'puree' | 'finger_food' | 'snack';
+          occurred_at?: string;
+          amount_ml?: number | null;
+          reaction?: 'good' | 'neutral' | 'refused' | null;
+          memo_tags?: string[] | null;
+          note?: string | null;
+        };
+        Relationships: [];
+      };
       growths: {
         Row: {
           id: string;
@@ -374,5 +409,11 @@ export type CustomMemoTagUpdate = Database['public']['Tables']['custom_memo_tags
 
 // ─── 유니온 타입 ──────────────────────────────────────────────────────────────
 
-export type AnyRecord = Feeding | Sleep | Diaper | Growth | Milestone;
-export type RecordType = 'feeding' | 'sleep' | 'diaper' | 'growth' | 'milestone';
+export type MealType = 'puree' | 'finger_food' | 'snack';
+export type MealReaction = 'good' | 'neutral' | 'refused';
+export type Meal = Database['public']['Tables']['meals']['Row'];
+export type MealInsert = Database['public']['Tables']['meals']['Insert'];
+export type MealUpdate = Database['public']['Tables']['meals']['Update'];
+
+export type AnyRecord = Feeding | Sleep | Diaper | Growth | Milestone | Meal;
+export type RecordType = 'feeding' | 'sleep' | 'diaper' | 'growth' | 'milestone' | 'meal';
