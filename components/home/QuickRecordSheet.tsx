@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { BottomSheet } from '../ui/BottomSheet';
 import { FeedingForm } from '../records/FeedingForm';
@@ -30,11 +30,16 @@ export const QuickRecordSheet = ({
   onSaveSuccess,
 }: QuickRecordSheetProps) => {
   const [activeCategory, setActiveCategory] = useState<QuickCategory>(initialCategory);
+  const prevVisible = useRef(false);
 
-  // visible이 true가 될 때 initialCategory 반영
-  if (visible && activeCategory !== initialCategory) {
-    setActiveCategory(initialCategory);
-  }
+  // visible이 false → true로 전환될 때만 initialCategory 반영
+  // 렌더마다 실행하면 탭 전환 시 계속 리셋되는 버그 발생
+  useEffect(() => {
+    if (visible && !prevVisible.current) {
+      setActiveCategory(initialCategory);
+    }
+    prevVisible.current = visible;
+  }, [visible, initialCategory]);
 
   const activeColor =
     CATEGORIES.find((c) => c.key === activeCategory)?.color ?? colors.accent;

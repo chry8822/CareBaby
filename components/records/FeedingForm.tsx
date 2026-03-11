@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Play, Pause, Square, Clock, SlidersHorizontal, Trash2 } from 'lucide-react-native';
 import { WheelTimePicker } from '../ui/WheelTimePicker';
-import { SliderInput } from '../ui/SliderInput';
+import { RulerInput } from '../ui/RulerInput';
 import { useAuthStore } from '../../stores/authStore';
 import { useBabyStore } from '../../stores/babyStore';
 import { useRecordStore } from '../../stores/recordStore';
@@ -65,7 +65,8 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
   const [feedingType, setFeedingType] = useState<FeedingType>(
     initialRecord?.feeding_type ?? 'breast_left',
   );
-  const [isDirectInput, setIsDirectInput] = useState(isEditMode);
+  // 직접입력을 기본으로, 타이머는 선택
+  const [isDirectInput, setIsDirectInput] = useState(true);
   const [durationMin, setDurationMin] = useState<number>(
     initialRecord?.duration_seconds ? Math.round(initialRecord.duration_seconds / 60) : 15,
   );
@@ -242,15 +243,6 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
           <View style={styles.section}>
             <View style={styles.inputModeRow}>
               <TouchableOpacity
-                style={[styles.modeTab, !isDirectInput && styles.modeTabActive]}
-                onPress={() => setIsDirectInput(false)}
-              >
-                <Clock size={14} color={!isDirectInput ? colors.white : colors.text.secondary} />
-                <Text style={[styles.modeTabText, !isDirectInput && styles.modeTabTextActive]}>
-                  타이머
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
                 style={[styles.modeTab, isDirectInput && styles.modeTabActive]}
                 onPress={() => {
                   setIsDirectInput(true);
@@ -263,6 +255,15 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
                 />
                 <Text style={[styles.modeTabText, isDirectInput && styles.modeTabTextActive]}>
                   직접 입력
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeTab, !isDirectInput && styles.modeTabActive]}
+                onPress={() => setIsDirectInput(false)}
+              >
+                <Clock size={14} color={!isDirectInput ? colors.white : colors.text.secondary} />
+                <Text style={[styles.modeTabText, !isDirectInput && styles.modeTabTextActive]}>
+                  타이머
                 </Text>
               </TouchableOpacity>
             </View>
@@ -366,17 +367,24 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
               title="시작 시간 선택"
             />
 
-            {/* 수유 시간 슬라이더 */}
+            {/* 수유 시간 룰러 */}
             <Text style={[styles.sectionTitle, { marginTop: spacing.lg }]}>수유 시간</Text>
             <View style={styles.sliderCard}>
-              <SliderInput
+              <RulerInput
                 value={durationMin}
                 min={0}
-                max={120}
+                max={240}
                 step={5}
                 onChange={setDurationMin}
                 formatLabel={formatDurationMin}
+                formatTickLabel={(v) => {
+                  if (v === 0) return '0';
+                  if (v % 60 === 0) return `${v / 60}h`;
+                  if (v % 30 === 0) return `${v}m`;
+                  return '';
+                }}
                 unit="분"
+                majorEvery={6}
                 color={NURSING_COLOR}
               />
             </View>
@@ -388,14 +396,16 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>수유량</Text>
             <View style={styles.sliderCard}>
-              <SliderInput
+              <RulerInput
                 value={amountValue}
                 min={0}
-                max={300}
+                max={500}
                 step={10}
                 onChange={setAmountValue}
                 formatLabel={formatAmountMl}
+                formatTickLabel={(v) => v === 0 ? '0' : v % 100 === 0 ? `${v}` : v % 50 === 0 ? `${v}` : ''}
                 unit="ml"
+                majorEvery={5}
                 color={NURSING_COLOR}
               />
             </View>

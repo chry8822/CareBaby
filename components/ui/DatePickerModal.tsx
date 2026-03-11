@@ -27,8 +27,8 @@ import { colors, spacing, borderRadius } from '../../constants/theme';
 // ─── 상수 ─────────────────────────────────────────────────────────────────────
 const ITEM_H = 44;
 const SHEET_OFF = 500;
-const MONTH_COPIES = 3; // 36개 — 마운트 속도 최적화
-const DAY_COPIES = 3;   // 최대 93개
+const MONTH_COPIES = 3;
+const DAY_COPIES = 3;
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const nowYear = new Date().getFullYear();
@@ -106,10 +106,8 @@ function reducer(s: PickerState, a: PickerAction): PickerState {
   }
 }
 
-// ─── 컬럼 컴포넌트 (각각 React.memo 격리 — 다른 컬럼 변경 시 리렌더 없음) ────
-type ColProps = {
-  overlayStyle: StyleProp<ViewStyle>;
-};
+// ─── 컬럼 컴포넌트 ────────────────────────────────────────────────────────────
+type ColProps = { overlayStyle: StyleProp<ViewStyle> };
 
 type YearColProps = ColProps & {
   year: number;
@@ -192,17 +190,15 @@ export const DatePickerModal = ({
 
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetY = useRef(new Animated.Value(SHEET_OFF)).current;
+
+  // 최신 콜백을 ref로 유지 — 클로저 stale 방지
   const onCancelRef = useRef(onCancel);
   useEffect(() => { onCancelRef.current = onCancel; }, [onCancel]);
-
   const onConfirmRef = useRef(onConfirm);
   useEffect(() => { onConfirmRef.current = onConfirm; }, [onConfirm]);
-
-  // 최신 state를 ref로 유지 — handleConfirm이 state에 의존하지 않도록
   const stateRef = useRef(state);
   useEffect(() => { stateRef.current = state; }, [state]);
 
-  // dispatch는 useReducer가 보장하는 안정 참조 → 빈 배열 의존성 가능
   const onYearChanged = useCallback(
     (e: { item: { value: number; label: string } }) =>
       dispatch({ type: 'SET_YEAR', year: e.item.value }),
@@ -227,7 +223,46 @@ export const DatePickerModal = ({
     backgroundColor: `${accentColor}0D`,
   }), [accentColor]);
 
-  // Android 뒤로가기 버튼으로 닫기 (closeSheet 선언 이후에 위치)
+  // ── 핵심 수정: visible prop 변화가 애니메이션을 구동 ──────────────────────
+  // open: visible false→true  /  close: visible true→false
+  // handleConfirm / closeSheet 는 콜백만 즉시 호출 → 부모가 visible=false 세팅
+  // → useEffect 에서 닫기 애니메이션 실행 → race condition 완전 제거
+  const prevVisible = useRef(visible);
+  useEffect(() => {
+    const wasVisible = prevVisible.current;
+    prevVisible.current = visible;
+
+    if (visible && !wasVisible) {
+      // 열기
+      dispatch({ type: 'RESET', value });
+      backdropOpacity.setValue(0);
+      sheetY.setValue(SHEET_OFF);
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 1, duration: 260,
+          easing: Easing.out(Easing.ease), useNativeDriver: true,
+        }),
+        Animated.spring(sheetY, {
+          toValue: 0, tension: 60, friction: 14, useNativeDriver: true,
+        }),
+      ]).start();
+    } else if (!visible && wasVisible) {
+      // 닫기 — 부모가 visible=false 세팅 후 실행됨
+      Animated.parallel([
+        Animated.timing(backdropOpacity, {
+          toValue: 0, duration: 200,
+          easing: Easing.in(Easing.ease), useNativeDriver: true,
+        }),
+        Animated.timing(sheetY, {
+          toValue: SHEET_OFF, duration: 260,
+          easing: Easing.in(Easing.cubic), useNativeDriver: true,
+        }),
+      ]).start();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  // Android 뒤로가기
   useEffect(() => {
     if (!visible) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -237,25 +272,16 @@ export const DatePickerModal = ({
     return () => sub.remove();
   }, [visible]);
 
-  const runCloseAnim = useCallback(
-    (onDone: () => void) => {
-      Animated.parallel([
-        Animated.timing(backdropOpacity, { toValue: 0, duration: 200, easing: Easing.in(Easing.ease), useNativeDriver: true }),
-        Animated.timing(sheetY, { toValue: SHEET_OFF, duration: 260, easing: Easing.in(Easing.cubic), useNativeDriver: true }),
-      ]).start(() => onDone());
-    },
-    [backdropOpacity, sheetY],
-  );
-
-  const closeSheet = useCallback(() => {
-    runCloseAnim(() => onCancelRef.current());
-  }, [runCloseAnim]);
-
-  // 확인: 닫기 애니메이션 완료 후 onConfirm 호출 → 딤이 확실히 사라진 뒤 처리
+  // 확인: 데이터 즉시 전달 → 부모가 visible=false → 닫기 애니메이션
   const handleConfirm = useCallback(() => {
     const { year, month, day } = stateRef.current;
-    runCloseAnim(() => onConfirmRef.current({ year, month, day }));
-  }, [runCloseAnim]);
+    onConfirmRef.current({ year, month, day });
+  }, []);
+
+  // 취소: 즉시 전달 → 부모가 visible=false → 닫기 애니메이션
+  const closeSheet = useCallback(() => {
+    onCancelRef.current();
+  }, []);
 
   const panResponder = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
@@ -266,10 +292,7 @@ export const DatePickerModal = ({
     onPanResponderRelease: (_, gs) => {
       sheetY.flattenOffset();
       if (gs.dy > 100 || gs.vy > 0.7) {
-        Animated.parallel([
-          Animated.timing(backdropOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
-          Animated.timing(sheetY, { toValue: SHEET_OFF, duration: 260, easing: Easing.in(Easing.ease), useNativeDriver: true }),
-        ]).start(() => onCancelRef.current());
+        onCancelRef.current();
       } else {
         Animated.spring(sheetY, { toValue: 0, tension: 80, friction: 14, useNativeDriver: true }).start();
       }
@@ -280,29 +303,10 @@ export const DatePickerModal = ({
     },
   })).current;
 
-  useEffect(() => {
-    if (visible) {
-      dispatch({ type: 'RESET', value });
-      backdropOpacity.setValue(0);
-      sheetY.setValue(SHEET_OFF);
-      Animated.parallel([
-        Animated.timing(backdropOpacity, { toValue: 1, duration: 260, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-        Animated.spring(sheetY, { toValue: 0, tension: 60, friction: 14, useNativeDriver: true }),
-      ]).start();
-    } else {
-      // 열기 애니메이션이 진행 중일 수 있으므로 먼저 중단 후 값 설정
-      backdropOpacity.stopAnimation();
-      sheetY.stopAnimation();
-      backdropOpacity.setValue(0);
-      sheetY.setValue(SHEET_OFF);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible]);
-
   const statusBarH = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
 
-  // Modal 대신 절대 위치 View — 피커가 항상 마운트된 상태를 유지해서
-  // 열기/닫기 시 1,665개 Animated 객체 재생성 없이 애니메이션만 실행됨
+  // visible=false 이후에도 닫기 애니메이션(200~260ms)이 재생되므로
+  // pointerEvents는 'none'으로 즉시 전환해 터치 차단 해제
   return (
     <View
       style={[StyleSheet.absoluteFillObject, styles.overlay]}
@@ -316,14 +320,20 @@ export const DatePickerModal = ({
       </Animated.View>
 
       <View style={[styles.wrapper, { paddingTop: statusBarH }]} pointerEvents="box-none">
-        <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetY }], paddingBottom: Math.max(insets.bottom, 16) }]}>
-
+        <Animated.View
+          style={[
+            styles.sheet,
+            {
+              transform: [{ translateY: sheetY }],
+              paddingBottom: Math.max(insets.bottom, 16),
+            },
+          ]}
+        >
           <View style={styles.dragArea} {...panResponder.panHandlers}>
             <View style={styles.handle} />
             <Text style={styles.sheetTitle}>생년월일 선택</Text>
           </View>
 
-          {/* 피커는 항상 마운트 — 최초 1회만 Animated 객체 생성 */}
           <View style={styles.pickerRow}>
             <YearCol  year={state.year}           onChanged={onYearChanged}  overlayStyle={overlayStyle} />
             <MonthCol monthVirt={state.monthVirt} onChanged={onMonthChanged} overlayStyle={overlayStyle} />
@@ -341,7 +351,6 @@ export const DatePickerModal = ({
               </Text>
             </TouchableOpacity>
           </View>
-
         </Animated.View>
       </View>
     </View>
@@ -358,7 +367,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
     shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.12, shadowRadius: 16, elevation: 8,
-    // paddingBottom은 useSafeAreaInsets로 인라인 처리 (네비바 겹침 방지)
   },
   dragArea: { height: 60, alignItems: 'center', justifyContent: 'center', paddingTop: spacing.md },
   handle:   { width: 36, height: 4, borderRadius: 2, backgroundColor: '#E0E0E0' },

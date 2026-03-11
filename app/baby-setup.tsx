@@ -90,110 +90,119 @@ const BabySetupScreen = () => {
     }
   };
 
+  const handleDateInputPress = () => {
+    // 키보드가 열려 있으면 dismiss 후 picker 표시
+    Keyboard.dismiss();
+    setPickerVisible(true);
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      {/* 헤더 */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
-          <ChevronLeft color={colors.text.primary} size={24} strokeWidth={2} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{isEdit ? '아기 정보 수정' : '아기 등록'}</Text>
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+    <View style={styles.root}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {!isEdit && (
-          <Text style={styles.pageDesc}>소중한 아기의 정보를 등록해 주세요.</Text>
-        )}
-
-        {/* 이름 */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>이름</Text>
-          <TextInput
-            style={styles.input}
-            value={name}
-            onChangeText={setName}
-            placeholder="아기 이름을 입력해주세요"
-            placeholderTextColor="#C2C2C2"
-            maxLength={20}
-            returnKeyType="done"
-          />
-        </View>
-
-        {/* 생년월일 */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>생년월일</Text>
-          <TouchableOpacity
-            style={[styles.input, styles.dateInput]}
-            onPress={() => { Keyboard.dismiss(); setPickerVisible(true); }}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.inputText, !dateSelected && styles.placeholder]}>
-              {dateSelected
-                ? formatDate(birthDate.year, birthDate.month, birthDate.day)
-                : '생년월일 선택하기'}
-            </Text>
+        {/* 헤더 */}
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+            <ChevronLeft color={colors.text.primary} size={24} strokeWidth={2} />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>{isEdit ? '아기 정보 수정' : '아기 등록'}</Text>
+          <View style={styles.headerSpacer} />
         </View>
 
-        {/* 성별 */}
-        <View style={styles.fieldGroup}>
-          <Text style={styles.fieldLabel}>성별</Text>
-          <View style={styles.genderRow}>
-            {GENDERS.map(({ key, label, sub, color, bgActive }) => {
-              const isActive = gender === key;
-              return (
-                <TouchableOpacity
-                  key={key}
-                  style={[
-                    styles.genderChip,
-                    isActive && { borderColor: color, backgroundColor: bgActive },
-                  ]}
-                  onPress={() => setGender(key)}
-                  activeOpacity={0.8}
-                >
-                  {/* 색상 인디케이터 도트 */}
-                  <View
-                    style={[
-                      styles.genderDot,
-                      { backgroundColor: isActive ? color : `${color}50` },
-                    ]}
-                  />
-                  <Text style={[styles.genderLabel, isActive && { color }]}>
-                    {label}
-                  </Text>
-                  <Text style={[styles.genderSub, isActive && { color, opacity: 0.8 }]}>
-                    {sub}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* 저장 버튼 */}
-        <TouchableOpacity
-          style={[styles.saveBtn, isLoading && styles.saveBtnDisabled]}
-          onPress={handleSave}
-          disabled={isLoading}
-          activeOpacity={0.85}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          {isLoading ? (
-            <ActivityIndicator color={colors.white} />
-          ) : (
-            <Text style={styles.saveBtnText}>{isEdit ? '수정 완료' : '등록하기'}</Text>
+          {!isEdit && (
+            <Text style={styles.pageDesc}>소중한 아기의 정보를 등록해 주세요.</Text>
           )}
-        </TouchableOpacity>
-      </ScrollView>
 
+          {/* 이름 */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>이름</Text>
+            <TextInput
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="아기 이름을 입력해주세요"
+              placeholderTextColor="#C2C2C2"
+              maxLength={20}
+              returnKeyType="done"
+            />
+          </View>
+
+          {/* 생년월일 */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>생년월일</Text>
+            <TouchableOpacity
+              style={[styles.input, styles.dateInput]}
+              onPress={handleDateInputPress}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.inputText, !dateSelected && styles.placeholder]}>
+                {dateSelected
+                  ? formatDate(birthDate.year, birthDate.month, birthDate.day)
+                  : '생년월일 선택하기'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* 성별 */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>성별</Text>
+            <View style={styles.genderRow}>
+              {GENDERS.map(({ key, label, sub, color, bgActive }) => {
+                const isActive = gender === key;
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[
+                      styles.genderChip,
+                      isActive && { borderColor: color, backgroundColor: bgActive },
+                    ]}
+                    onPress={() => setGender(key)}
+                    activeOpacity={0.8}
+                  >
+                    <View
+                      style={[
+                        styles.genderDot,
+                        { backgroundColor: isActive ? color : `${color}50` },
+                      ]}
+                    />
+                    <Text style={[styles.genderLabel, isActive && { color }]}>
+                      {label}
+                    </Text>
+                    <Text style={[styles.genderSub, isActive && { color, opacity: 0.8 }]}>
+                      {sub}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* 저장 버튼 */}
+          <TouchableOpacity
+            style={[styles.saveBtn, isLoading && styles.saveBtnDisabled]}
+            onPress={handleSave}
+            disabled={isLoading}
+            activeOpacity={0.85}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={colors.white} />
+            ) : (
+              <Text style={styles.saveBtnText}>{isEdit ? '수정 완료' : '등록하기'}</Text>
+            )}
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* DatePickerModal은 KeyboardAvoidingView 바깥에 위치 —
+          키보드에 의한 레이아웃 이동 영향을 받지 않음 */}
       <DatePickerModal
         visible={pickerVisible}
         value={birthDate}
@@ -205,7 +214,7 @@ const BabySetupScreen = () => {
         onCancel={() => setPickerVisible(false)}
         accentColor={colors.accent}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
@@ -213,6 +222,9 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.bg.primary,
+  },
+  flex: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',

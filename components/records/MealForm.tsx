@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Calendar, Trash2 } from 'lucide-react-native';
 import { WheelTimePicker } from '../ui/WheelTimePicker';
-import { SliderInput } from '../ui/SliderInput';
+import { RulerInput } from '../ui/RulerInput';
 import { useAuthStore } from '../../stores/authStore';
 import { useBabyStore } from '../../stores/babyStore';
 import { useRecordStore } from '../../stores/recordStore';
@@ -226,14 +226,16 @@ export const MealForm = ({ onSaveSuccess, initialRecord, onDelete }: MealFormPro
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>섭취량</Text>
           <View style={styles.sliderCard}>
-            <SliderInput
+            <RulerInput
               value={amountValue}
               min={0}
-              max={300}
+              max={500}
               step={10}
               onChange={setAmountValue}
               formatLabel={formatAmountMl}
+              formatTickLabel={(v) => v === 0 ? '0' : v % 100 === 0 ? `${v}` : v % 50 === 0 ? `${v}` : ''}
               unit="ml"
+              majorEvery={5}
               color={MEAL_COLOR}
             />
           </View>
