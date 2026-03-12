@@ -374,7 +374,7 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
                 value={durationMin}
                 min={0}
                 max={240}
-                step={5}
+                step={1}
                 onChange={setDurationMin}
                 formatLabel={formatDurationMin}
                 formatTickLabel={(v) => {
@@ -384,7 +384,7 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
                   return '';
                 }}
                 unit="분"
-                majorEvery={6}
+                majorEvery={5}
                 color={NURSING_COLOR}
               />
             </View>

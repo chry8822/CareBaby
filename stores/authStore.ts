@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { User } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured, authStorage, authStorageKey } from '../lib/supabase';
 import type { Profile } from '../types/database';
+import { getRememberMe } from '../lib/loginPrefs';
 
 interface AuthState {
   user: User | null;
@@ -127,6 +128,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'INITIAL_SESSION') {
         if (session?.user) {
+          // 로그인 유지 OFF 상태라면 세션 초기화 후 로그아웃
+          const remember = await getRememberMe();
+          if (!remember) {
+            await supabase.auth.signOut();
+            set({ user: null, isInitialized: true });
+            return;
+          }
           // 정상 케이스: session 유효하거나 refresh 성공
           set({ user: session.user, isInitialized: true });
           get().fetchProfile();

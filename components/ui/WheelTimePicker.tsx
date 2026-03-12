@@ -49,6 +49,10 @@ const formatDateLabel = (date: Date, idx: number): string => {
   return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
 };
 
+// 체온 모드: 34~42°C, 0.1°C 단위 (정수 컬럼 + 소수 컬럼)
+const TEMP_INTS = Array.from({ length: 9 }, (_, i) => 34 + i);   // 34~42
+const TEMP_DECS = Array.from({ length: 10 }, (_, i) => i);        // 0~9
+
 export interface WheelTimePickerProps {
   visible: boolean;
   value: Date;
@@ -56,7 +60,10 @@ export interface WheelTimePickerProps {
   onCancel: () => void;
   accentColor?: string;
   title?: string;
-  mode?: 'time' | 'datetime';
+  mode?: 'time' | 'datetime' | 'temperature';
+  // temperature 모드 전용
+  initialTemp?: number;
+  onConfirmTemp?: (value: number) => void;
 }
 
 export const WheelTimePicker = ({
@@ -67,14 +74,21 @@ export const WheelTimePicker = ({
   accentColor = colors.accent,
   title = '시간 선택',
   mode = 'time',
+  initialTemp = 36.5,
+  onConfirmTemp,
 }: WheelTimePickerProps) => {
   const [pendingHour, setPendingHour] = useState(0);
   const [pendingMinute, setPendingMinute] = useState(0);
   const [pendingDateIdx, setPendingDateIdx] = useState(0);
+  // 체온 모드 상태 (정수: 34~42 의 인덱스, 소수: 0~9)
+  const [pendingTempIntIdx, setPendingTempIntIdx] = useState(2); // 기본 36
+  const [pendingTempDec, setPendingTempDec] = useState(5);       // 기본 .5
 
   const hourRef = useRef<ScrollView>(null);
   const minuteRef = useRef<ScrollView>(null);
   const dateRef = useRef<ScrollView>(null);
+  const tempIntRef = useRef<ScrollView>(null);
+  const tempDecRef = useRef<ScrollView>(null);
 
   // 애니메이션 값: 딤과 시트를 완전히 분리
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -164,17 +178,6 @@ export const WheelTimePicker = ({
   useEffect(() => {
     if (!visible) return;
 
-    const h = value.getHours();
-    const m = value.getMinutes();
-    const valueDay = new Date(value);
-    valueDay.setHours(0, 0, 0, 0);
-    const dateIdx = DATE_OPTIONS.findIndex((d) => d.getTime() === valueDay.getTime());
-    const resolvedDateIdx = dateIdx >= 0 ? dateIdx : 0;
-
-    setPendingHour(h);
-    setPendingMinute(m);
-    setPendingDateIdx(resolvedDateIdx);
-
     // 초기값 리셋
     backdropOpacity.setValue(0);
     sheetTranslateY.setValue(SHEET_OFFSCREEN);
@@ -195,6 +198,31 @@ export const WheelTimePicker = ({
       }),
     ]).start();
 
+    if (mode === 'temperature') {
+      const clampedTemp = Math.max(34, Math.min(42.9, initialTemp));
+      const intPart = Math.floor(clampedTemp);
+      const decPart = Math.round((clampedTemp - intPart) * 10);
+      const intIdx = intPart - 34;
+      setPendingTempIntIdx(intIdx);
+      setPendingTempDec(decPart);
+      const timer = setTimeout(() => {
+        tempIntRef.current?.scrollTo({ y: intIdx * ITEM_HEIGHT, animated: false });
+        tempDecRef.current?.scrollTo({ y: decPart * ITEM_HEIGHT, animated: false });
+      }, 80);
+      return () => clearTimeout(timer);
+    }
+
+    const h = value.getHours();
+    const m = value.getMinutes();
+    const valueDay = new Date(value);
+    valueDay.setHours(0, 0, 0, 0);
+    const dateIdx = DATE_OPTIONS.findIndex((d) => d.getTime() === valueDay.getTime());
+    const resolvedDateIdx = dateIdx >= 0 ? dateIdx : 0;
+
+    setPendingHour(h);
+    setPendingMinute(m);
+    setPendingDateIdx(resolvedDateIdx);
+
     const timer = setTimeout(() => {
       hourRef.current?.scrollTo({ y: h * ITEM_HEIGHT, animated: false });
       minuteRef.current?.scrollTo({ y: m * ITEM_HEIGHT, animated: false });
@@ -211,7 +239,8 @@ export const WheelTimePicker = ({
       const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT);
       const clamped = Math.max(0, Math.min(23, idx));
       setPendingHour(clamped);
-      hourRef.current?.scrollTo({ y: clamped * ITEM_HEIGHT, animated: true });
+      // animated: false — snapToInterval과 충돌 없이 정확한 위치 고정
+      hourRef.current?.scrollTo({ y: clamped * ITEM_HEIGHT, animated: false });
     },
     [],
   );
@@ -221,7 +250,7 @@ export const WheelTimePicker = ({
       const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT);
       const clamped = Math.max(0, Math.min(59, idx));
       setPendingMinute(clamped);
-      minuteRef.current?.scrollTo({ y: clamped * ITEM_HEIGHT, animated: true });
+      minuteRef.current?.scrollTo({ y: clamped * ITEM_HEIGHT, animated: false });
     },
     [],
   );
@@ -231,12 +260,37 @@ export const WheelTimePicker = ({
       const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT);
       const clamped = Math.max(0, Math.min(DATE_OPTIONS.length - 1, idx));
       setPendingDateIdx(clamped);
-      dateRef.current?.scrollTo({ y: clamped * ITEM_HEIGHT, animated: true });
+      dateRef.current?.scrollTo({ y: clamped * ITEM_HEIGHT, animated: false });
+    },
+    [],
+  );
+
+  const handleTempIntScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT);
+      const clamped = Math.max(0, Math.min(TEMP_INTS.length - 1, idx));
+      setPendingTempIntIdx(clamped);
+      tempIntRef.current?.scrollTo({ y: clamped * ITEM_HEIGHT, animated: false });
+    },
+    [],
+  );
+
+  const handleTempDecScrollEnd = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const idx = Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT);
+      const clamped = Math.max(0, Math.min(TEMP_DECS.length - 1, idx));
+      setPendingTempDec(clamped);
+      tempDecRef.current?.scrollTo({ y: clamped * ITEM_HEIGHT, animated: false });
     },
     [],
   );
 
   const handleConfirm = () => {
+    if (mode === 'temperature') {
+      const result = parseFloat(`${TEMP_INTS[pendingTempIntIdx]}.${pendingTempDec}`);
+      onConfirmTemp?.(result);
+      return;
+    }
     const result = new Date(value);
     if (mode === 'datetime') {
       const base = DATE_OPTIONS[pendingDateIdx];
@@ -259,11 +313,14 @@ export const WheelTimePicker = ({
         showsVerticalScrollIndicator={false}
         snapToInterval={ITEM_HEIGHT}
         decelerationRate="fast"
+        bounces={false}
+        overScrollMode="never"
         onMomentumScrollEnd={onScrollEnd}
         onScrollEndDrag={onScrollEnd}
         scrollEventThrottle={16}
-        contentContainerStyle={styles.scrollContent}
       >
+        {/* 상단 spacer: padding 대신 View로 대체해 Android snap 안정성 확보 */}
+        <View style={styles.spacer} />
         {labels.map((label, idx) => {
           const isSelected = idx === selectedIdx;
           return (
@@ -281,6 +338,8 @@ export const WheelTimePicker = ({
             </View>
           );
         })}
+        {/* 하단 spacer */}
+        <View style={styles.spacer} />
       </ScrollView>
     </View>
   );
@@ -288,6 +347,8 @@ export const WheelTimePicker = ({
   const hourLabels = HOURS.map(pad);
   const minuteLabels = MINUTES.map(pad);
   const dateLabels = DATE_OPTIONS.map(formatDateLabel);
+  const tempIntLabels = TEMP_INTS.map(String);
+  const tempDecLabels = TEMP_DECS.map((d) => `.${d}`);
 
   return (
     <Modal
@@ -325,20 +386,32 @@ export const WheelTimePicker = ({
           </View>
 
           <View style={styles.wheelsContainer}>
-            {mode === 'datetime' && (
+            {mode === 'temperature' ? (
               <>
-                {renderColumn(dateLabels, pendingDateIdx, dateRef, handleDateScrollEnd, 2)}
-                <View style={styles.dateDivider} />
+                {renderColumn(tempIntLabels, pendingTempIntIdx, tempIntRef, handleTempIntScrollEnd)}
+                <View style={styles.colonWrapper}>
+                  <Text style={[styles.colon, { color: accentColor }]}>.</Text>
+                </View>
+                {renderColumn(tempDecLabels, pendingTempDec, tempDecRef, handleTempDecScrollEnd)}
+                <View style={styles.unitWrapper}>
+                  <Text style={[styles.unitText, { color: accentColor }]}>°C</Text>
+                </View>
+              </>
+            ) : (
+              <>
+                {mode === 'datetime' && (
+                  <>
+                    {renderColumn(dateLabels, pendingDateIdx, dateRef, handleDateScrollEnd, 2)}
+                    <View style={styles.dateDivider} />
+                  </>
+                )}
+                {renderColumn(hourLabels, pendingHour, hourRef, handleHourScrollEnd)}
+                <View style={styles.colonWrapper}>
+                  <Text style={[styles.colon, { color: accentColor }]}>:</Text>
+                </View>
+                {renderColumn(minuteLabels, pendingMinute, minuteRef, handleMinuteScrollEnd)}
               </>
             )}
-
-            {renderColumn(hourLabels, pendingHour, hourRef, handleHourScrollEnd)}
-
-            <View style={styles.colonWrapper}>
-              <Text style={[styles.colon, { color: accentColor }]}>:</Text>
-            </View>
-
-            {renderColumn(minuteLabels, pendingMinute, minuteRef, handleMinuteScrollEnd)}
 
             {/* 페이드 마스크 + 선택 인디케이터 */}
             <View style={styles.selectionOverlay} pointerEvents="none">
@@ -425,8 +498,8 @@ const styles = StyleSheet.create({
   column: {
     overflow: 'hidden',
   },
-  scrollContent: {
-    paddingVertical: ITEM_HEIGHT * 2,
+  spacer: {
+    height: ITEM_HEIGHT * 2,
   },
   item: {
     height: ITEM_HEIGHT,
@@ -452,6 +525,16 @@ const styles = StyleSheet.create({
   },
   colon: {
     fontSize: 26,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  unitWrapper: {
+    width: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  unitText: {
+    fontSize: 20,
     fontWeight: '700',
     marginBottom: 4,
   },

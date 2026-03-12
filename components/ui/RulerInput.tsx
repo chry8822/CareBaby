@@ -42,6 +42,7 @@ interface RulerInputProps {
   unit?: string;
   color?: string;
   majorEvery?: number;  // 큰 눈금 간격(스텝 수)
+  decimalInput?: boolean; // 소수점 직접 입력 지원 여부
 }
 
 export const RulerInput = ({
@@ -55,6 +56,7 @@ export const RulerInput = ({
   unit = '',
   color = colors.accent,
   majorEvery = 5,
+  decimalInput = false,
 }: RulerInputProps) => {
   const scrollRef = useRef<ScrollView>(null);
   const containerW = useRef(0);
@@ -162,9 +164,13 @@ export const RulerInput = ({
   };
 
   const commitEdit = () => {
-    const n = parseInt(inputText, 10);
+    const n = decimalInput ? parseFloat(inputText) : parseInt(inputText, 10);
     if (!isNaN(n)) {
-      const snap = Math.max(min, Math.min(max, Math.round((n - min) / step) * step + min));
+      const snap = parseFloat(
+        (Math.max(min, Math.min(max, Math.round((n - min) / step) * step + min))).toFixed(
+          decimalInput ? String(step).split('.')[1]?.length ?? 1 : 0
+        )
+      );
       onChange(snap);
       setDisplayValue(snap);
       scrollRef.current?.scrollTo({ x: valToX(snap), animated: true });
@@ -173,7 +179,9 @@ export const RulerInput = ({
   };
 
   const bigLabel = formatLabel ? formatLabel(displayValue) : `${displayValue}${unit}`;
-  const pad = containerReady ? containerW.current / 2 : 0;
+  // STEP_PX/2 을 빼야 tick 중앙이 정확히 뷰포트 중앙에 정렬됨
+  // (tickWrap 너비가 STEP_PX이고 tick 선은 그 중앙에 위치하므로 오프셋 보정)
+  const pad = containerReady ? containerW.current / 2 - STEP_PX / 2 : 0;
 
   return (
     <View style={styles.wrapper}>
@@ -185,7 +193,7 @@ export const RulerInput = ({
             style={[styles.editInput, { color, borderBottomColor: color }]}
             value={inputText}
             onChangeText={setInputText}
-            keyboardType="number-pad"
+            keyboardType={decimalInput ? 'decimal-pad' : 'number-pad'}
             onBlur={commitEdit}
             onSubmitEditing={commitEdit}
             selectTextOnFocus
@@ -221,7 +229,8 @@ export const RulerInput = ({
           horizontal
           showsHorizontalScrollIndicator={false}
           snapToInterval={STEP_PX}
-          decelerationRate={0.992}
+          decelerationRate="fast"
+          overScrollMode="never"
           scrollEventThrottle={16}
           onScrollBeginDrag={onScrollBegin}
           onScroll={onScroll}

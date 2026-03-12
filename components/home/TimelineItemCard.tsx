@@ -19,6 +19,7 @@ const formatRelative = (date: Date | string): string => {
 interface TimelineItemCardProps {
   item: TimelineItem;
   onPress?: () => void;
+  hideBorder?: boolean;
 }
 
 const FEEDING_TYPE_LABELS: Record<string, string> = {
@@ -51,7 +52,7 @@ const MEAL_REACTION_LABELS: Record<string, string> = {
   refused: '거부',
 };
 
-export const TimelineItemCard = ({ item, onPress }: TimelineItemCardProps) => {
+export const TimelineItemCard = ({ item, onPress, hideBorder }: TimelineItemCardProps) => {
   const renderContent = () => {
     switch (item.type) {
       case 'feeding': {
@@ -131,7 +132,7 @@ export const TimelineItemCard = ({ item, onPress }: TimelineItemCardProps) => {
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, hideBorder && styles.containerNoBorder]}
       onPress={onPress}
       activeOpacity={0.7}
     >
@@ -152,6 +153,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+  },
+  containerNoBorder: {
+    borderBottomWidth: 0,
   },
   row: {
     flexDirection: 'row',

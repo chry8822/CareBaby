@@ -7,16 +7,18 @@ import {
   Animated,
   PanResponder,
   TouchableWithoutFeedback,
+  TouchableOpacity,
   Platform,
   Dimensions,
   StatusBar,
 } from 'react-native';
+import { X } from 'lucide-react-native';
 import { colors, typography, spacing, borderRadius } from '../../constants/theme';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-const HANDLE_AREA_HEIGHT = 44;
+const HANDLE_AREA_HEIGHT = 52;
 
-type SnapPoint = '25%' | '50%' | '75%' | '90%';
+type SnapPoint = '25%' | '50%' | '75%' | '80%' | '90%';
 
 interface BottomSheetProps {
   visible: boolean;
@@ -24,6 +26,7 @@ interface BottomSheetProps {
   snapPoints?: SnapPoint[];
   title?: string;
   children: React.ReactNode;
+  closeOnBackdrop?: boolean;
 }
 
 const snapToHeight = (snap: SnapPoint): number => {
@@ -37,12 +40,22 @@ export const BottomSheet = ({
   snapPoints = ['50%', '90%'],
   title,
   children,
+  closeOnBackdrop = true,
 }: BottomSheetProps) => {
   const defaultHeight = snapToHeight(snapPoints[0]);
 
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const sheetTranslateY = useRef(new Animated.Value(defaultHeight)).current;
+  // addListener로 항상 정확한 현재 위치 추적 (애니메이션 중에도 정확)
   const currentTranslateY = useRef(defaultHeight);
+
+  useEffect(() => {
+    const id = sheetTranslateY.addListener(({ value }) => {
+      currentTranslateY.current = value;
+    });
+    return () => sheetTranslateY.removeListener(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const animateOpen = useCallback(() => {
     sheetTranslateY.setValue(defaultHeight);
@@ -58,9 +71,7 @@ export const BottomSheet = ({
         stiffness: 260,
         useNativeDriver: true,
       }),
-    ]).start(() => {
-      currentTranslateY.current = 0;
-    });
+    ]).start();
   }, [backdropOpacity, sheetTranslateY, defaultHeight]);
 
   const animateClose = useCallback(() => {
@@ -77,9 +88,12 @@ export const BottomSheet = ({
       }),
     ]).start(() => {
       onClose();
-      currentTranslateY.current = 0;
     });
   }, [backdropOpacity, sheetTranslateY, defaultHeight, onClose]);
+
+  // animateClose ref — PanResponder 클로저에서 최신 참조
+  const animateCloseRef = useRef(animateClose);
+  animateCloseRef.current = animateClose;
 
   useEffect(() => {
     if (visible) {
@@ -89,32 +103,37 @@ export const BottomSheet = ({
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      // ★ false: 탭은 PanResponder가 가로채지 않음 → 애니메이션 중 탭 버그 방지
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gs) => gs.dy > 4,
+
       onPanResponderGrant: () => {
+        // addListener로 currentTranslateY가 항상 정확하므로 안전
+        sheetTranslateY.stopAnimation();
         sheetTranslateY.setOffset(currentTranslateY.current);
         sheetTranslateY.setValue(0);
       },
+
       onPanResponderMove: (_, gs) => {
         if (gs.dy > 0) {
           sheetTranslateY.setValue(gs.dy);
         }
       },
+
       onPanResponderRelease: (_, gs) => {
         sheetTranslateY.flattenOffset();
         if (gs.dy > 80 || gs.vy > 0.5) {
-          animateClose();
+          animateCloseRef.current();
         } else {
           Animated.spring(sheetTranslateY, {
             toValue: 0,
             damping: 22,
             stiffness: 260,
             useNativeDriver: true,
-          }).start(() => {
-            currentTranslateY.current = 0;
-          });
+          }).start();
         }
       },
+
       onPanResponderTerminate: () => {
         sheetTranslateY.flattenOffset();
         Animated.spring(sheetTranslateY, {
@@ -122,9 +141,7 @@ export const BottomSheet = ({
           damping: 22,
           stiffness: 260,
           useNativeDriver: true,
-        }).start(() => {
-          currentTranslateY.current = 0;
-        });
+        }).start();
       },
     }),
   ).current;
@@ -144,13 +161,16 @@ export const BottomSheet = ({
       <Animated.View
         style={[StyleSheet.absoluteFillObject, styles.backdrop, { opacity: backdropOpacity }]}
       >
-        <TouchableWithoutFeedback onPress={animateClose}>
+        {closeOnBackdrop ? (
+          <TouchableWithoutFeedback onPress={animateClose}>
+            <View style={StyleSheet.absoluteFillObject} />
+          </TouchableWithoutFeedback>
+        ) : (
           <View style={StyleSheet.absoluteFillObject} />
-        </TouchableWithoutFeedback>
+        )}
       </Animated.View>
 
-      {/* 시트 — KeyboardAvoidingView를 여기서 관리하지 않음.
-          내부 컴포넌트가 각자 필요에 따라 처리한다. */}
+      {/* 시트 */}
       <View
         style={[styles.sheetWrapper, { paddingTop: statusBarHeight }]}
         pointerEvents="box-none"
@@ -161,10 +181,24 @@ export const BottomSheet = ({
             { height: defaultHeight, transform: [{ translateY: sheetTranslateY }] },
           ]}
         >
-          {/* 드래그 핸들 + 타이틀 영역 */}
+          {/* 드래그 핸들 영역 (드래그만 인식, 탭 무시) */}
           <View style={styles.dragArea} {...panResponder.panHandlers}>
             <View style={styles.handle} />
-            {title ? <Text style={styles.title}>{title}</Text> : null}
+          </View>
+
+          {/* 타이틀 + X 버튼 */}
+          <View style={styles.header}>
+            <Text style={styles.title} numberOfLines={1}>
+              {title ?? ''}
+            </Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={animateClose}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.6}
+            >
+              <X size={20} color={colors.text.secondary} strokeWidth={2} />
+            </TouchableOpacity>
           </View>
 
           {/* 콘텐츠 */}
@@ -194,7 +228,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   dragArea: {
-    height: HANDLE_AREA_HEIGHT,
+    height: 24,
     alignItems: 'center',
     justifyContent: 'center',
     paddingTop: spacing.md,
@@ -205,12 +239,27 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: '#E0E0E0',
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    minHeight: 40,
+  },
   title: {
-    fontSize: 18,
+    flex: 1,
+    fontSize: 17,
     fontWeight: '600' as const,
-    lineHeight: 24,
     color: colors.text.primary,
-    marginTop: spacing.sm,
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: spacing.sm,
   },
   content: {
     flex: 1,

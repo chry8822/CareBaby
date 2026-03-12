@@ -1,21 +1,38 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, Image, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Link, router } from 'expo-router';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
+import { Mail, Lock, Eye, EyeOff, X, Check } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
 import { GoogleIcon, AppleIcon } from '../../components/ui/SocialIcons';
 import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
+import { getAuthErrorMessage } from '../../lib/authErrors';
+import { getSavedEmail, setSavedEmail, clearSavedEmail, getRememberMe, setRememberMe } from '../../lib/loginPrefs';
 
 const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [saveId, setSaveId] = useState(false);
+  const [rememberMe, setRememberMeState] = useState(true);
   const { signInWithEmail, isLoading } = useAuthStore();
   const { showModal, hideModal } = useUIStore();
 
   const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+  useEffect(() => {
+    const loadPrefs = async () => {
+      const saved = await getSavedEmail();
+      const remember = await getRememberMe();
+      if (saved) {
+        setEmail(saved);
+        setSaveId(true);
+      }
+      setRememberMeState(remember);
+    };
+    loadPrefs();
+  }, []);
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -36,10 +53,19 @@ const LoginScreen = () => {
     }
     try {
       await signInWithEmail(email.trim(), password);
-      // 로그인 성공 → 즉시 메인 화면으로 이동 (네비게이션 가드 보조)
+
+      // 아이디 저장
+      if (saveId) {
+        await setSavedEmail(email.trim());
+      } else {
+        await clearSavedEmail();
+      }
+      // 로그인 유지 설정 저장
+      await setRememberMe(rememberMe);
+
       router.replace('/(tabs)');
     } catch (err) {
-      const message = err instanceof Error ? err.message : '로그인에 실패했습니다.';
+      const message = getAuthErrorMessage(err, '로그인에 실패했습니다.');
       showModal({
         title: '로그인 실패',
         message,
@@ -83,6 +109,7 @@ const LoginScreen = () => {
 
           {/* 폼 영역 */}
           <View style={styles.form}>
+            {/* 이메일 인풋 */}
             <View style={styles.inputWrapper}>
               <Mail color={colors.text.secondary} size={18} />
               <TextInput
@@ -95,8 +122,14 @@ const LoginScreen = () => {
                 autoCapitalize="none"
                 autoCorrect={false}
               />
+              {email.length > 0 && (
+                <TouchableOpacity onPress={() => setEmail('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <X color={colors.text.secondary} size={16} />
+                </TouchableOpacity>
+              )}
             </View>
 
+            {/* 비밀번호 인풋 */}
             <View style={styles.inputWrapper}>
               <Lock color={colors.text.secondary} size={18} />
               <TextInput
@@ -108,12 +141,34 @@ const LoginScreen = () => {
                 secureTextEntry={!showPassword}
                 autoCapitalize="none"
               />
+              {password.length > 0 && (
+                <TouchableOpacity onPress={() => setPassword('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.iconButton}>
+                  <X color={colors.text.secondary} size={16} />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 onPress={() => setShowPassword((prev) => !prev)}
-                style={styles.eyeButton}
+                style={styles.iconButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 {showPassword ? <EyeOff color={colors.text.secondary} size={18} /> : <Eye color={colors.text.secondary} size={18} />}
+              </TouchableOpacity>
+            </View>
+
+            {/* 체크박스 영역 */}
+            <View style={styles.checkboxRow}>
+              <TouchableOpacity style={styles.checkboxItem} onPress={() => setSaveId((v) => !v)} activeOpacity={0.7}>
+                <View style={[styles.checkbox, saveId && styles.checkboxChecked]}>
+                  {saveId && <Check color={colors.white} size={12} strokeWidth={3} />}
+                </View>
+                <Text style={styles.checkboxLabel}>아이디 저장</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.checkboxItem} onPress={() => setRememberMeState((v) => !v)} activeOpacity={0.7}>
+                <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                  {rememberMe && <Check color={colors.white} size={12} strokeWidth={3} />}
+                </View>
+                <Text style={styles.checkboxLabel}>로그인 유지</Text>
               </TouchableOpacity>
             </View>
 
@@ -218,8 +273,38 @@ const styles = StyleSheet.create({
     ...typography.bodyRegular,
     color: colors.text.primary,
   },
-  eyeButton: {
+  iconButton: {
     padding: spacing.xs,
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    gap: spacing.xl,
+    paddingHorizontal: spacing.xs,
+    marginTop: -spacing.xs,
+  },
+  checkboxItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.bg.elevated,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
+  },
+  checkboxLabel: {
+    ...typography.bodyRegular,
+    fontSize: 14,
+    color: colors.text.secondary,
   },
   primaryButton: {
     backgroundColor: colors.accent,
@@ -227,7 +312,7 @@ const styles = StyleSheet.create({
     height: 54,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.xs,
     ...shadows.card,
   },
   buttonDisabled: {

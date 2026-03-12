@@ -85,7 +85,7 @@ export const QuickRecordSheet = ({
           <SleepForm onSaveSuccess={onSaveSuccess} />
         )}
         {activeCategory === 'diaper' && (
-          <DiaperForm onSaveSuccess={onSaveSuccess} autoSave />
+          <DiaperForm onSaveSuccess={onSaveSuccess} />
         )}
       </View>
     </BottomSheet>

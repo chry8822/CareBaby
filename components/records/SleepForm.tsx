@@ -357,7 +357,7 @@ export const SleepForm = ({ onSaveSuccess, initialRecord, onDelete }: SleepFormP
                 value={durationMin}
                 min={0}
                 max={720}
-                step={5}
+                step={1}
                 onChange={setDurationMin}
                 formatLabel={formatDurationMin}
                 formatTickLabel={(v) => {
@@ -367,7 +367,7 @@ export const SleepForm = ({ onSaveSuccess, initialRecord, onDelete }: SleepFormP
                   return '';
                 }}
                 unit="분"
-                majorEvery={6}
+                majorEvery={5}
                 color={SLEEP_COLOR}
               />
             </View>

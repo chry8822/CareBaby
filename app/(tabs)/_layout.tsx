@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import type { ViewStyle, TextStyle } from 'react-native';
-import { Home, PlusCircle, BarChart2, Settings } from 'lucide-react-native';
+import { Home, HeartPulse, BarChart2, Settings } from 'lucide-react-native';
 import { colors } from '../../constants/theme';
 
 const tabBarLabelStyle: TextStyle = {
@@ -41,13 +41,17 @@ const TabsLayout = () => {
         }}
       />
       <Tabs.Screen
-        name="record"
+        name="health"
         options={{
-          title: '기록',
+          title: '건강',
           tabBarIcon: ({ color, size }: { color: string; size: number }) => (
-            <PlusCircle color={color} size={size} strokeWidth={1.8} />
+            <HeartPulse color={color} size={size} strokeWidth={1.8} />
           ),
         }}
+      />
+      <Tabs.Screen
+        name="record"
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="stats"

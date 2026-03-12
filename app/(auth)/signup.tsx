@@ -15,6 +15,7 @@ import { Link, router } from 'expo-router';
 import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
+import { getAuthErrorMessage } from '../../lib/authErrors';
 import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
 
 const SignupScreen = () => {
@@ -77,7 +78,7 @@ const SignupScreen = () => {
         },
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : '회원가입에 실패했습니다.';
+      const message = getAuthErrorMessage(err, '회원가입에 실패했습니다.');
       showModal({
         title: '회원가입 실패',
         message,

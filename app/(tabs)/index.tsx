@@ -18,16 +18,20 @@ const HomeScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState<QuickCategory>('feeding');
 
   const navigating = useRef(false);
+  const closeRowsRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     fetchBabies();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 화면이 다시 포커스를 받을 때(= baby-setup에서 돌아올 때) 락 해제
+  // 포커스 획득: 내비게이션 락 해제 / 포커스 해제(탭 이동): 열린 row 닫기
   useFocusEffect(
     useCallback(() => {
       navigating.current = false;
+      return () => {
+        closeRowsRef.current?.();
+      };
     }, [])
   );
 
@@ -38,6 +42,7 @@ const HomeScreen = () => {
   }, []);
 
   const handleQuickAction = useCallback((category: QuickCategory) => {
+    closeRowsRef.current?.();   // 열린 스와이프 row 먼저 닫기
     setSelectedCategory(category);
     setSheetVisible(true);
   }, []);
@@ -78,6 +83,7 @@ const HomeScreen = () => {
           baby={currentBaby}
           {...homeData}
           onQuickAction={handleQuickAction}
+          closeRowsRef={closeRowsRef}
         />
       ) : (
         <HomeEmpty

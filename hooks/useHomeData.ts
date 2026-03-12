@@ -36,8 +36,10 @@ export interface HomeData {
   insight: string | null;
 
   timeline: TimelineItem[];
+  hasMoreTimeline: boolean;
   isLoading: boolean;
   refresh: () => Promise<void>;
+  loadMoreTimeline: () => Promise<void>;
 }
 
 // ─── 헬퍼 ──────────────────────────────────────────────────────────────────────
@@ -49,6 +51,9 @@ function getTodayStart(): string {
   const d = String(now.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}T00:00:00`;
 }
+
+// 테이블당 한 번에 가져오는 최대 레코드 수
+const FETCH_LIMIT = 50;
 
 // ─── 훅 ────────────────────────────────────────────────────────────────────────
 
@@ -71,7 +76,11 @@ export function useHomeData(babyId: string | null): HomeData {
   });
 
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
+  const [hasMoreTimeline, setHasMoreTimeline] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // 현재 각 테이블의 fetch limit (loadMore 시 증가)
+  const currentLimit = useRef(FETCH_LIMIT);
 
   // 경과 타이머용 ref (클로저 문제 방지)
   const feedingTimeRef = useRef<number | null>(null);
@@ -79,7 +88,7 @@ export function useHomeData(babyId: string | null): HomeData {
   const diaperTimeRef = useRef<number | null>(null);
   const mealTimeRef = useRef<number | null>(null);
 
-  const fetch = useCallback(async () => {
+  const fetch = useCallback(async (limit = currentLimit.current) => {
     if (!babyId) return;
 
     setIsLoading(true);
@@ -91,27 +100,26 @@ export function useHomeData(babyId: string | null): HomeData {
           .from('feedings')
           .select('*')
           .eq('baby_id', babyId)
-          .gte('started_at', todayStart)
-          .order('started_at', { ascending: false }),
+          .order('started_at', { ascending: false })
+          .limit(limit),
         supabase
           .from('sleeps')
           .select('*')
           .eq('baby_id', babyId)
-          .gte('started_at', todayStart)
-          .order('started_at', { ascending: false }),
+          .order('started_at', { ascending: false })
+          .limit(limit),
         supabase
           .from('diapers')
           .select('*')
           .eq('baby_id', babyId)
-          .gte('occurred_at', todayStart)
-          .order('occurred_at', { ascending: false }),
-        // meals 테이블은 선택적 — 없어도 앱이 작동해야 함
+          .order('occurred_at', { ascending: false })
+          .limit(limit),
         supabase
           .from('meals')
           .select('*')
           .eq('baby_id', babyId)
-          .gte('occurred_at', todayStart)
           .order('occurred_at', { ascending: false })
+          .limit(limit)
           .then((res) => (res.error ? { data: [] } : res)),
       ]);
 
@@ -120,7 +128,7 @@ export function useHomeData(babyId: string | null): HomeData {
       const diapers: Diaper[] = diaperRes.data ?? [];
       const meals: Meal[] = (mealRes as { data: Meal[] }).data ?? [];
 
-      // 마지막 기록
+      // 가장 최근 기록 (날짜 무관)
       const latestFeeding = feedings[0] ?? null;
       const latestSleep = sleeps[0] ?? null;
       const latestDiaper = diapers[0] ?? null;
@@ -167,16 +175,21 @@ export function useHomeData(babyId: string | null): HomeData {
           : 0,
       );
 
-      // 오늘 요약
-      const totalSleepSeconds = sleeps.reduce(
+      // 오늘 요약 — 이미 가져온 데이터에서 오늘 것만 필터 (today는 최근 50개 안에 항상 포함됨)
+      const todayFeedings = feedings.filter((f) => f.started_at >= todayStart);
+      const todaySleeps = sleeps.filter((s) => s.started_at >= todayStart);
+      const todayDiapers = diapers.filter((d) => d.occurred_at >= todayStart);
+      const todayMeals = meals.filter((m) => m.occurred_at >= todayStart);
+
+      const totalSleepSeconds = todaySleeps.reduce(
         (acc, s) => acc + (s.duration_seconds ?? 0),
         0,
       );
       setTodaySummary({
-        feedingCount: feedings.length,
+        feedingCount: todayFeedings.length,
         totalSleepSeconds,
-        diaperCount: diapers.length,
-        mealCount: meals.length,
+        diaperCount: todayDiapers.length,
+        mealCount: todayMeals.length,
       });
 
       // 타임라인 합치기 (최신순 정렬)
@@ -212,6 +225,14 @@ export function useHomeData(babyId: string | null): HomeData {
       ].sort((a, b) => b.time.getTime() - a.time.getTime());
 
       setTimeline(merged);
+
+      // 어느 테이블이든 limit에 딱 맞게 왔으면 더 있을 가능성 있음
+      const mightHaveMore =
+        feedings.length >= limit ||
+        sleeps.length >= limit ||
+        diapers.length >= limit ||
+        meals.length >= limit;
+      setHasMoreTimeline(mightHaveMore);
     } catch {
       // 개별 에러는 각 res에서 이미 처리됨; 전체 실패 시 현재 상태 유지
     } finally {
@@ -219,9 +240,15 @@ export function useHomeData(babyId: string | null): HomeData {
     }
   }, [babyId]);
 
+  const loadMoreTimeline = useCallback(async () => {
+    currentLimit.current = currentLimit.current + FETCH_LIMIT;
+    await fetch(currentLimit.current);
+  }, [fetch]);
+
   // 최초 + babyId 변경 시 fetch
   useEffect(() => {
-    fetch();
+    currentLimit.current = FETCH_LIMIT;
+    fetch(FETCH_LIMIT);
   }, [fetch]);
 
   // 1초마다 elapsed 업데이트
@@ -272,7 +299,9 @@ export function useHomeData(babyId: string | null): HomeData {
     todaySummary,
     insight: null,
     timeline,
+    hasMoreTimeline,
     isLoading,
     refresh: fetch,
+    loadMoreTimeline,
   };
 }

@@ -1,17 +1,7 @@
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  RefreshControl,
-} from 'react-native';
+import { View, Text, ScrollView, StyleSheet, RefreshControl } from 'react-native';
 import type { Baby } from '../../types/database';
 import type { HomeData } from '../../hooks/useHomeData';
-import {
-  colors,
-  typography,
-  spacing,
-} from '../../constants/theme';
+import { colors, typography, spacing } from '../../constants/theme';
 import { getDaysSinceBirth, getGreeting, formatDuration } from '../../lib/timeUtils';
 import { BabyAvatar } from './BabyAvatar';
 import { InsightCard } from './InsightCard';
@@ -22,6 +12,7 @@ import type { QuickCategory } from './QuickRecordSheet';
 type HomeDashboardProps = {
   baby: Baby;
   onQuickAction?: (category: QuickCategory) => void;
+  closeRowsRef?: React.MutableRefObject<(() => void) | null>;
 } & HomeData;
 
 export const HomeDashboard = ({
@@ -37,9 +28,12 @@ export const HomeDashboard = ({
   todaySummary,
   insight,
   timeline,
+  hasMoreTimeline,
   isLoading,
   refresh,
+  loadMoreTimeline,
   onQuickAction,
+  closeRowsRef,
 }: HomeDashboardProps) => {
   const greeting = getGreeting();
   const daysSince = getDaysSinceBirth(baby.birth_date);
@@ -47,9 +41,7 @@ export const HomeDashboard = ({
   const summaryParts: string[] = [
     `수유 ${todaySummary.feedingCount}회`,
     todaySummary.mealCount > 0 ? `이유식 ${todaySummary.mealCount}회` : null,
-    todaySummary.totalSleepSeconds > 0
-      ? `수면 ${formatDuration(todaySummary.totalSleepSeconds)}`
-      : null,
+    todaySummary.totalSleepSeconds > 0 ? `수면 ${formatDuration(todaySummary.totalSleepSeconds)}` : null,
     `기저귀 ${todaySummary.diaperCount}회`,
   ].filter(Boolean) as string[];
 
@@ -59,13 +51,7 @@ export const HomeDashboard = ({
     <ScrollView
       style={styles.scroll}
       showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={isLoading}
-          onRefresh={refresh}
-          tintColor={colors.accent}
-        />
-      }
+      refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refresh} tintColor={colors.accent} />}
     >
       {/* 헤더 */}
       <View style={styles.header}>
@@ -93,13 +79,11 @@ export const HomeDashboard = ({
       {/* 패딩 콘텐츠 */}
       <View style={styles.paddedContent}>
         {/* 오늘 요약 */}
-        <Text style={styles.summaryText}>{summaryText}</Text>
-
         {/* AI 인사이트 카드 */}
         <InsightCard insight={insight} />
 
-        {/* 타임라인 — onRefresh 전달 */}
-        <TimelineList timeline={timeline} onRefresh={refresh} />
+        {/* 타임라인 */}
+        <TimelineList timeline={timeline} hasMoreTimeline={hasMoreTimeline} onRefresh={refresh} onLoadMore={loadMoreTimeline} closeRowsRef={closeRowsRef} />
       </View>
     </ScrollView>
   );

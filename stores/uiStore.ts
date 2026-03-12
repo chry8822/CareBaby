@@ -48,7 +48,7 @@ export const useUIStore = create<UIState>((set) => ({
     set({ modal: { ...options, visible: true } }),
 
   hideModal: () =>
-    set({ modal: { visible: false } }),
+    set((state) => ({ modal: { ...state.modal, visible: false } })),
 
   toast: {
     visible: false,

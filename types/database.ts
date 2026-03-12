@@ -315,6 +315,90 @@ export type Database = {
         };
         Relationships: [];
       };
+      temperatures: {
+        Row: {
+          id: string;
+          baby_id: string;
+          recorded_by: string;
+          value_celsius: number;
+          measured_at: string;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          baby_id: string;
+          recorded_by: string;
+          value_celsius: number;
+          measured_at?: string;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          value_celsius?: number;
+          measured_at?: string;
+          note?: string | null;
+        };
+        Relationships: [];
+      };
+      medicines: {
+        Row: {
+          id: string;
+          baby_id: string;
+          recorded_by: string;
+          medicine_name: string;
+          dosage: string | null;
+          given_at: string;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          baby_id: string;
+          recorded_by: string;
+          medicine_name: string;
+          dosage?: string | null;
+          given_at?: string;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          medicine_name?: string;
+          dosage?: string | null;
+          given_at?: string;
+          note?: string | null;
+        };
+        Relationships: [];
+      };
+      hospital_visits: {
+        Row: {
+          id: string;
+          baby_id: string;
+          recorded_by: string;
+          clinic_name: string;
+          reason: string | null;
+          occurred_at: string;
+          note: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          baby_id: string;
+          recorded_by: string;
+          clinic_name: string;
+          reason?: string | null;
+          occurred_at?: string;
+          note?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          clinic_name?: string;
+          reason?: string | null;
+          occurred_at?: string;
+          note?: string | null;
+        };
+        Relationships: [];
+      };
       custom_memo_tags: {
         Row: {
           id: string;
@@ -417,3 +501,15 @@ export type MealUpdate = Database['public']['Tables']['meals']['Update'];
 
 export type AnyRecord = Feeding | Sleep | Diaper | Growth | Milestone | Meal;
 export type RecordType = 'feeding' | 'sleep' | 'diaper' | 'growth' | 'milestone' | 'meal';
+
+export type Temperature = Database['public']['Tables']['temperatures']['Row'];
+export type TemperatureInsert = Database['public']['Tables']['temperatures']['Insert'];
+export type TemperatureUpdate = Database['public']['Tables']['temperatures']['Update'];
+
+export type Medicine = Database['public']['Tables']['medicines']['Row'];
+export type MedicineInsert = Database['public']['Tables']['medicines']['Insert'];
+export type MedicineUpdate = Database['public']['Tables']['medicines']['Update'];
+
+export type HospitalVisit = Database['public']['Tables']['hospital_visits']['Row'];
+export type HospitalVisitInsert = Database['public']['Tables']['hospital_visits']['Insert'];
+export type HospitalVisitUpdate = Database['public']['Tables']['hospital_visits']['Update'];
