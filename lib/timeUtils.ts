@@ -10,16 +10,26 @@ export function getDaysSinceBirth(birthDate: string): number {
 }
 
 /**
- * 경과 시간 포맷 (초 → "N분 전" / "N시간 N분 전")
+ * 경과 시간 포맷 (초 → "방금 전" / "N분 전" / "N시간 N분 전" / "N일 N시간 전")
  * 60초 미만: "방금 전"
  */
 export function formatElapsed(seconds: number): string {
   if (seconds < 60) return '방금 전';
   if (seconds < 3600) return `${Math.floor(seconds / 60)}분 전`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (m === 0) return `${h}시간 전`;
-  return `${h}시간 ${m}분 전`;
+
+  const totalMinutes = Math.floor(seconds / 60);
+  const totalHours = Math.floor(totalMinutes / 60);
+
+  if (totalHours < 24) {
+    const m = totalMinutes % 60;
+    if (m === 0) return `${totalHours}시간 전`;
+    return `${totalHours}시간 ${m}분 전`;
+  }
+
+  const d = Math.floor(totalHours / 24);
+  const h = totalHours % 24;
+  if (h === 0) return `${d}일 전`;
+  return `${d}일 ${h}시간 전`;
 }
 
 /**

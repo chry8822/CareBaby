@@ -11,9 +11,17 @@ import {
   Platform,
   Dimensions,
   StatusBar,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import { X } from 'lucide-react-native';
 import { colors, typography, spacing, borderRadius } from '../../constants/theme';
+
+// React 19에서 children이 JSX 암묵적 prop에서 제거됨 — Animated.View 타입 보완
+const AnimatedView = Animated.View as React.ComponentType<{
+  children?: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}>;
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 const HANDLE_AREA_HEIGHT = 52;
@@ -34,14 +42,7 @@ const snapToHeight = (snap: SnapPoint): number => {
   return SCREEN_HEIGHT * pct;
 };
 
-export const BottomSheet = ({
-  visible,
-  onClose,
-  snapPoints = ['50%', '90%'],
-  title,
-  children,
-  closeOnBackdrop = true,
-}: BottomSheetProps) => {
+export const BottomSheet = ({ visible, onClose, snapPoints = ['50%', '90%'], title, children, closeOnBackdrop = true }: BottomSheetProps) => {
   const defaultHeight = snapToHeight(snapPoints[0]);
 
   const backdropOpacity = useRef(new Animated.Value(0)).current;
@@ -146,21 +147,12 @@ export const BottomSheet = ({
     }),
   ).current;
 
-  const statusBarHeight =
-    Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+  const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      statusBarTranslucent
-      onRequestClose={animateClose}
-    >
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent onRequestClose={animateClose}>
       {/* 딤 배경 */}
-      <Animated.View
-        style={[StyleSheet.absoluteFillObject, styles.backdrop, { opacity: backdropOpacity }]}
-      >
+      <AnimatedView style={[StyleSheet.absoluteFillObject, styles.backdrop, { opacity: backdropOpacity }]}>
         {closeOnBackdrop ? (
           <TouchableWithoutFeedback onPress={animateClose}>
             <View style={StyleSheet.absoluteFillObject} />
@@ -168,19 +160,11 @@ export const BottomSheet = ({
         ) : (
           <View style={StyleSheet.absoluteFillObject} />
         )}
-      </Animated.View>
+      </AnimatedView>
 
       {/* 시트 */}
-      <View
-        style={[styles.sheetWrapper, { paddingTop: statusBarHeight }]}
-        pointerEvents="box-none"
-      >
-        <Animated.View
-          style={[
-            styles.sheet,
-            { height: defaultHeight, transform: [{ translateY: sheetTranslateY }] },
-          ]}
-        >
+      <View style={[styles.sheetWrapper, { paddingTop: statusBarHeight }]} pointerEvents="box-none">
+        <AnimatedView style={[styles.sheet, { height: defaultHeight, transform: [{ translateY: sheetTranslateY }] }]}>
           {/* 드래그 핸들 영역 (드래그만 인식, 탭 무시) */}
           <View style={styles.dragArea} {...panResponder.panHandlers}>
             <View style={styles.handle} />
@@ -191,19 +175,14 @@ export const BottomSheet = ({
             <Text style={styles.title} numberOfLines={1}>
               {title ?? ''}
             </Text>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={animateClose}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              activeOpacity={0.6}
-            >
+            <TouchableOpacity onPress={animateClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.6}>
               <X size={20} color={colors.text.secondary} strokeWidth={2} />
             </TouchableOpacity>
           </View>
 
           {/* 콘텐츠 */}
           <View style={styles.content}>{children}</View>
-        </Animated.View>
+        </AnimatedView>
       </View>
     </Modal>
   );
@@ -251,16 +230,17 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600' as const,
     color: colors.text.primary,
+    textAlign: 'center',                         
   },
-  closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: spacing.sm,
-  },
+  // closeButton: {
+  //   width: 32,
+  //   height: 32,
+  //   borderRadius: 16,
+  //   backgroundColor: colors.border,
+  //   justifyContent: 'center',
+  //   alignItems: 'center',
+  //   marginLeft: spacing.sm,
+  // },
   content: {
     flex: 1,
   },

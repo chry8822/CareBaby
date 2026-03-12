@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo, memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import type { TimelineItem } from '../../hooks/useHomeData';
 import { SwipeableRow } from '../ui/SwipeableRow';
@@ -46,6 +46,7 @@ interface DayGroup {
   feedingTotalMl: number;
   diaperCount: number;
   sleepTotalSeconds: number;
+  mealCount: number;
 }
 
 function groupByDate(timeline: TimelineItem[]): DayGroup[] {
@@ -61,6 +62,7 @@ function groupByDate(timeline: TimelineItem[]): DayGroup[] {
         feedingCount: 0,
         feedingTotalMl: 0,
         diaperCount: 0,
+        mealCount: 0,
         sleepTotalSeconds: 0,
       });
       order.push(label);
@@ -74,6 +76,8 @@ function groupByDate(timeline: TimelineItem[]): DayGroup[] {
       group.diaperCount += 1;
     } else if (item.type === 'sleep') {
       group.sleepTotalSeconds += item.data.duration_seconds ?? 0;
+    } else if (item.type === 'meal') {
+      group.mealCount += 1;
     }
   }
 
@@ -82,7 +86,7 @@ function groupByDate(timeline: TimelineItem[]): DayGroup[] {
 
 // ─── 컴포넌트 ──────────────────────────────────────────────────────────────────
 
-export const TimelineList = ({ timeline, hasMoreTimeline = false, onRefresh, onLoadMore, closeRowsRef }: TimelineListProps) => {
+const TimelineListInner = ({ timeline, hasMoreTimeline = false, onRefresh, onLoadMore, closeRowsRef }: TimelineListProps) => {
   const [editingItem, setEditingItem] = useState<TimelineItem | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -108,18 +112,21 @@ export const TimelineList = ({ timeline, hasMoreTimeline = false, onRefresh, onL
     openRowRef.current = { id: rowId, close: closeFn };
   }, []);
 
-  const handleItemPress = (item: TimelineItem) => {
-    closeAll();
-    setEditingItem(item);
-  };
+  const handleItemPress = useCallback(
+    (item: TimelineItem) => {
+      closeAll();
+      setEditingItem(item);
+    },
+    [closeAll],
+  );
 
-  const handleEditClose = () => setEditingItem(null);
-  const handleEditSave = async () => {
+  const handleEditClose = useCallback(() => setEditingItem(null), []);
+  const handleEditSave = useCallback(async () => {
     setEditingItem(null);
     await onRefresh?.();
-  };
+  }, [onRefresh]);
 
-  const handleLoadMore = async () => {
+  const handleLoadMore = useCallback(async () => {
     if (loadingMore || !onLoadMore) return;
     setLoadingMore(true);
     try {
@@ -127,7 +134,7 @@ export const TimelineList = ({ timeline, hasMoreTimeline = false, onRefresh, onL
     } finally {
       setLoadingMore(false);
     }
-  };
+  }, [loadingMore, onLoadMore]);
 
   // ─── 삭제 ─────────────────────────────────────────────────────────────────
   const handleDelete = useCallback(
@@ -234,7 +241,9 @@ export const TimelineList = ({ timeline, hasMoreTimeline = false, onRefresh, onL
         if (group.sleepTotalSeconds > 0) {
           statParts.push(`수면 ${formatSleepDuration(group.sleepTotalSeconds)}`);
         }
-
+        if (group.mealCount > 0) {
+          statParts.push(`이유식 ${group.mealCount}회`);
+        }
         return (
           <View key={group.label} style={[styles.dayCard, shadows.card]}>
             {/* 날짜 헤더 */}
@@ -280,6 +289,8 @@ export const TimelineList = ({ timeline, hasMoreTimeline = false, onRefresh, onL
   );
 };
 
+export const TimelineList = memo(TimelineListInner);
+
 const styles = StyleSheet.create({
   emptyCard: {
     backgroundColor: colors.bg.elevated,
@@ -319,7 +330,7 @@ const styles = StyleSheet.create({
   statRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.xs,
+    // gap: ,
   },
   statChip: {
     paddingHorizontal: spacing.sm,
