@@ -1,39 +1,45 @@
-import { View, Image, StyleSheet } from 'react-native';
+import { View, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors } from '../../constants/theme';
 
 interface BabyAvatarProps {
   uri?: string | null;
   size?: number;
+  onPress?: () => void;
 }
 
-export const BabyAvatar = ({ uri, size = 44 }: BabyAvatarProps) => {
+export const BabyAvatar = ({ uri, size = 44, onPress }: BabyAvatarProps) => {
   const avatarStyle = {
     width: size,
     height: size,
     borderRadius: size / 2,
   };
 
-  if (uri) {
-    return (
-      <Image
-        source={{ uri }}
-        style={[styles.avatar, avatarStyle]}
-        resizeMode="cover"
-      />
-    );
-  }
-
-  return (
+  const content = uri ? (
+    <Image
+      source={{ uri }}
+      style={[styles.avatar, avatarStyle]}
+      resizeMode="cover"
+    />
+  ) : (
     <View style={[styles.placeholder, avatarStyle]}>
       <Image
         source={require('../../assets/images/baby-profile-default.png')}
         style={[styles.avatar, avatarStyle]}
         resizeMode="cover"
-        // 파일 없을 때 투명 표시
         onError={() => {}}
       />
     </View>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return content;
 };
 
 const styles = StyleSheet.create({

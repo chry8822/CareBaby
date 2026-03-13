@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { WheelTimePicker } from '../ui/WheelTimePicker';
+import { ClearableInput } from '../ui/ClearableInput';
 import { useHealthStore } from '../../stores/healthStore';
 import { useAuthStore } from '../../stores/authStore';
 import { colors, typography, spacing, borderRadius } from '../../constants/theme';
@@ -106,13 +107,13 @@ export const MedicineForm = ({ babyId, onSaved, initialData }: Props) => {
           {/* 약 이름 */}
           <View style={styles.section}>
             <Text style={styles.label}>약 이름</Text>
-            <TextInput
+            <ClearableInput
               style={styles.input}
               value={medicineName}
               onChangeText={setMedicineName}
               placeholder="약 이름 입력"
-              placeholderTextColor={colors.text.secondary}
               maxLength={50}
+              returnKeyType="done"
             />
             <View style={styles.chipRow}>
               {COMMON_MEDICINES.map((m) => (
@@ -140,13 +141,13 @@ export const MedicineForm = ({ babyId, onSaved, initialData }: Props) => {
           {/* 용량 */}
           <View style={styles.section}>
             <Text style={styles.label}>용량 (선택)</Text>
-            <TextInput
+            <ClearableInput
               style={styles.input}
               value={dosage}
               onChangeText={setDosage}
               placeholder="예: 5ml, 1정"
-              placeholderTextColor={colors.text.secondary}
               maxLength={30}
+              returnKeyType="done"
             />
           </View>
 

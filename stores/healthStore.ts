@@ -17,6 +17,8 @@ interface HealthState {
   medicines: Medicine[];
   hospitalVisits: HospitalVisit[];
   isLoading: boolean;
+  /** 현재 스토어에 로드된 데이터의 babyId (아기 전환 감지용) */
+  loadedBabyId: string | null;
 
   fetchHealthRecords: (babyId: string) => Promise<void>;
   saveTemperature: (data: TemperatureInsert) => Promise<void>;
@@ -35,6 +37,7 @@ export const useHealthStore = create<HealthState>((set, get) => ({
   medicines: [],
   hospitalVisits: [],
   isLoading: false,
+  loadedBabyId: null,
 
   fetchHealthRecords: async (babyId: string) => {
     if (!babyId) return;
@@ -72,6 +75,7 @@ export const useHealthStore = create<HealthState>((set, get) => ({
         temperatures: tempRes.data ?? [],
         medicines: medRes.data ?? [],
         hospitalVisits: hospRes.data ?? [],
+        loadedBabyId: babyId,
       });
     } finally {
       set({ isLoading: false });

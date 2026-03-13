@@ -2,14 +2,8 @@ import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet } from 'rea
 import { router } from 'expo-router';
 import { Droplets, Moon, Wind, Utensils } from 'lucide-react-native';
 import type { Baby } from '../../types/database';
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-  shadows,
-} from '../../constants/theme';
-import { getDaysSinceBirth, getGreeting } from '../../lib/timeUtils';
+import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
+import { HomeHeader } from './HomeHeader';
 import type { QuickCategory } from './QuickRecordSheet';
 
 interface QuickAction {
@@ -21,13 +15,12 @@ interface QuickAction {
 
 interface HomeEmptyProps {
   baby: Baby;
+  babies: Baby[];
+  onSwitchBaby: (baby: Baby) => void;
   onQuickAction?: (category: QuickCategory) => void;
 }
 
-export const HomeEmpty = ({ baby, onQuickAction }: HomeEmptyProps) => {
-  const greeting = getGreeting();
-  const daysSince = getDaysSinceBirth(baby.birth_date);
-
+export const HomeEmpty = ({ baby, babies, onSwitchBaby, onQuickAction }: HomeEmptyProps) => {
   const quickActions: QuickAction[] = [
     {
       label: '수유',
@@ -64,18 +57,15 @@ export const HomeEmpty = ({ baby, onQuickAction }: HomeEmptyProps) => {
   };
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* 인사말 카드 */}
-      <View style={styles.greetingCard}>
-        <Text style={styles.greetingText}>{greeting}</Text>
-        <Text style={styles.babyName}>{baby.name}</Text>
-        <Text style={styles.daysText}>생후 {daysSince}일</Text>
-      </View>
+    <>
+      {/* 공통 헤더 — ScrollView 바깥에서 렌더링 (패딩 중복 방지) */}
+      <HomeHeader baby={baby} babies={babies} onSwitchBaby={onSwitchBaby} />
 
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
       {/* 온보딩 CTA 카드 */}
       <View style={styles.ctaCard}>
         <View style={styles.ctaImageContainer}>
@@ -109,6 +99,7 @@ export const HomeEmpty = ({ baby, onQuickAction }: HomeEmptyProps) => {
         ))}
       </View>
     </ScrollView>
+    </>
   );
 };
 
@@ -118,29 +109,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screenPadding,
-    paddingTop: spacing.lg,
     paddingBottom: spacing.xxl * 2,
-  },
-  greetingCard: {
-    backgroundColor: colors.bg.elevated,
-    borderRadius: borderRadius.card,
-    padding: spacing.cardPadding,
-    marginBottom: spacing.lg,
-    ...shadows.card,
-  },
-  greetingText: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginBottom: spacing.xs,
-  },
-  babyName: {
-    ...typography.h2,
-    color: colors.text.primary,
-  },
-  daysText: {
-    ...typography.bodyRegular,
-    color: colors.accent,
-    marginTop: spacing.xs,
   },
   ctaCard: {
     backgroundColor: colors.bg.elevated,
@@ -153,7 +122,6 @@ const styles = StyleSheet.create({
   ctaImageContainer: {
     width: 160,
     height: 120,
-    // backgroundColor: colors.border,
     borderRadius: borderRadius.base,
     marginBottom: spacing.lg,
     overflow: 'hidden',
@@ -162,7 +130,6 @@ const styles = StyleSheet.create({
   },
   ctaImage: {
     width: 180,
-    // height: 120,
   },
   ctaTitle: {
     ...typography.bodySemiBold,

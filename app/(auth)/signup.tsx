@@ -16,6 +16,7 @@ import { Mail, Lock, User, Eye, EyeOff } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
 import { getAuthErrorMessage } from '../../lib/authErrors';
+import { ClearableInput } from '../../components/ui/ClearableInput';
 import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
 
 const SignupScreen = () => {
@@ -108,10 +109,10 @@ const SignupScreen = () => {
           <View style={styles.form}>
             <View style={styles.inputWrapper}>
               <User color={colors.text.secondary} size={18} />
-              <TextInput
-                style={styles.input}
+              <ClearableInput
+                containerStyle={styles.input}
+                style={styles.inputText}
                 placeholder="이름 (닉네임)"
-                placeholderTextColor={colors.text.secondary}
                 value={displayName}
                 onChangeText={setDisplayName}
                 autoCapitalize="words"
@@ -120,10 +121,10 @@ const SignupScreen = () => {
 
             <View style={styles.inputWrapper}>
               <Mail color={colors.text.secondary} size={18} />
-              <TextInput
-                style={styles.input}
+              <ClearableInput
+                containerStyle={styles.input}
+                style={styles.inputText}
                 placeholder="이메일"
-                placeholderTextColor={colors.text.secondary}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -135,7 +136,7 @@ const SignupScreen = () => {
             <View style={styles.inputWrapper}>
               <Lock color={colors.text.secondary} size={18} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.inputText]}
                 placeholder="비밀번호 (8자 이상)"
                 placeholderTextColor={colors.text.secondary}
                 value={password}
@@ -159,7 +160,7 @@ const SignupScreen = () => {
             <View style={styles.inputWrapper}>
               <Lock color={colors.text.secondary} size={18} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, styles.inputText]}
                 placeholder="비밀번호 확인"
                 placeholderTextColor={colors.text.secondary}
                 value={confirmPassword}
@@ -240,6 +241,8 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+  },
+  inputText: {
     ...typography.bodyRegular,
     color: colors.text.primary,
   },

@@ -17,6 +17,7 @@ export type Database = {
           display_name: string;
           avatar_url: string | null;
           premium_expires_at: string | null;
+          parent_role: string | null;
           created_at: string;
         };
         Insert: {
@@ -24,6 +25,7 @@ export type Database = {
           display_name: string;
           avatar_url?: string | null;
           premium_expires_at?: string | null;
+          parent_role?: string | null;
           created_at?: string;
         };
         Update: {
@@ -31,6 +33,7 @@ export type Database = {
           display_name?: string;
           avatar_url?: string | null;
           premium_expires_at?: string | null;
+          parent_role?: string | null;
         };
         Relationships: [];
       };
@@ -458,6 +461,15 @@ export type CaretakerRole = 'owner' | 'caretaker';
 export type Caretaker = Database['public']['Tables']['caretakers']['Row'];
 export type CaretakerInsert = Database['public']['Tables']['caretakers']['Insert'];
 export type CaretakerUpdate = Database['public']['Tables']['caretakers']['Update'];
+
+/** fetchCaretakers 에서 profiles 조인 시 사용하는 확장 타입 */
+export type CaretakerWithProfile = Caretaker & {
+  profiles: {
+    display_name: string | null;
+    avatar_url: string | null;
+    parent_role: string | null;
+  } | null;
+};
 
 export type FeedingType = 'breast_left' | 'breast_right' | 'pumped' | 'formula';
 export type Feeding = Database['public']['Tables']['feedings']['Row'];

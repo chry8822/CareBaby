@@ -1,14 +1,5 @@
 import { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-  KeyboardAvoidingView,
-} from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Play, Pause, Square, Clock, SlidersHorizontal, Trash2 } from 'lucide-react-native';
 import { WheelTimePicker } from '../ui/WheelTimePicker';
 import { RulerInput } from '../ui/RulerInput';
@@ -62,17 +53,11 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
 
   const isEditMode = !!initialRecord;
 
-  const [feedingType, setFeedingType] = useState<FeedingType>(
-    initialRecord?.feeding_type ?? 'breast_left',
-  );
+  const [feedingType, setFeedingType] = useState<FeedingType>(initialRecord?.feeding_type ?? 'breast_left');
   // 직접입력을 기본으로, 타이머는 선택
   const [isDirectInput, setIsDirectInput] = useState(true);
-  const [durationMin, setDurationMin] = useState<number>(
-    initialRecord?.duration_seconds ? Math.round(initialRecord.duration_seconds / 60) : 15,
-  );
-  const [startTime, setStartTime] = useState(
-    initialRecord ? new Date(initialRecord.started_at) : new Date(),
-  );
+  const [durationMin, setDurationMin] = useState<number>(initialRecord?.duration_seconds ? Math.round(initialRecord.duration_seconds / 60) : 15);
+  const [startTime, setStartTime] = useState(initialRecord ? new Date(initialRecord.started_at) : new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [amountValue, setAmountValue] = useState<number>(initialRecord?.amount_ml ?? 0);
   const [selectedMemos, setSelectedMemos] = useState<string[]>(initialRecord?.memo_tags ?? []);
@@ -83,9 +68,7 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
   const isAmountVisible = feedingType === 'formula' || feedingType === 'pumped';
 
   const toggleMemo = useCallback((memo: string) => {
-    setSelectedMemos((prev) =>
-      prev.includes(memo) ? prev.filter((m) => m !== memo) : [...prev, memo],
-    );
+    setSelectedMemos((prev) => (prev.includes(memo) ? prev.filter((m) => m !== memo) : [...prev, memo]));
   }, []);
 
   const handleStartTimer = () => {
@@ -211,29 +194,19 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
   };
 
   return (
-    <KeyboardAvoidingView
+    <ScrollView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
     >
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
         {/* 수유 타입 선택 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>수유 종류</Text>
           <View style={styles.chipRow}>
             {FEEDING_TYPES.map((ft) => (
-              <Chip
-                key={ft.key}
-                label={ft.label}
-                selected={feedingType === ft.key}
-                onPress={() => setFeedingType(ft.key)}
-                color={NURSING_COLOR}
-              />
+              <Chip key={ft.key} label={ft.label} selected={feedingType === ft.key} onPress={() => setFeedingType(ft.key)} color={NURSING_COLOR} />
             ))}
           </View>
         </View>
@@ -249,22 +222,12 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
                   if (isRunning) stop();
                 }}
               >
-                <SlidersHorizontal
-                  size={14}
-                  color={isDirectInput ? colors.white : colors.text.secondary}
-                />
-                <Text style={[styles.modeTabText, isDirectInput && styles.modeTabTextActive]}>
-                  직접 입력
-                </Text>
+                <SlidersHorizontal size={14} color={isDirectInput ? colors.white : colors.text.secondary} />
+                <Text style={[styles.modeTabText, isDirectInput && styles.modeTabTextActive]}>직접 입력</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modeTab, !isDirectInput && styles.modeTabActive]}
-                onPress={() => setIsDirectInput(false)}
-              >
+              <TouchableOpacity style={[styles.modeTab, !isDirectInput && styles.modeTabActive]} onPress={() => setIsDirectInput(false)}>
                 <Clock size={14} color={!isDirectInput ? colors.white : colors.text.secondary} />
-                <Text style={[styles.modeTabText, !isDirectInput && styles.modeTabTextActive]}>
-                  타이머
-                </Text>
+                <Text style={[styles.modeTabText, !isDirectInput && styles.modeTabTextActive]}>타이머</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -277,79 +240,47 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
               <TimerDisplay seconds={elapsed} size="large" />
               <View style={styles.timerButtons}>
                 {!isRunning && !isPaused ? (
-                  <TouchableOpacity
-                    style={[styles.timerBtn, styles.timerBtnPrimary]}
-                    onPress={handleStartTimer}
-                    activeOpacity={0.8}
-                  >
+                  <TouchableOpacity style={[styles.timerBtn, styles.timerBtnPrimary]} onPress={handleStartTimer} activeOpacity={0.8}>
                     <Play color={colors.white} size={20} fill={colors.white} />
                     <Text style={styles.timerBtnText}>시작</Text>
                   </TouchableOpacity>
                 ) : null}
                 {isRunning && !isPaused ? (
                   <>
-                    <TouchableOpacity
-                      style={[styles.timerBtn, styles.timerBtnSecondary]}
-                      onPress={pause}
-                      activeOpacity={0.8}
-                    >
+                    <TouchableOpacity style={[styles.timerBtn, styles.timerBtnSecondary]} onPress={pause} activeOpacity={0.8}>
                       <Pause color={NURSING_COLOR} size={18} />
-                      <Text style={[styles.timerBtnText, styles.timerBtnTextSecondary]}>
-                        일시정지
-                      </Text>
+                      <Text style={[styles.timerBtnText, styles.timerBtnTextSecondary]}>일시정지</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.timerBtn, styles.timerBtnStop]}
-                      onPress={handleStopTimer}
-                      activeOpacity={0.8}
-                    >
+                    <TouchableOpacity style={[styles.timerBtn, styles.timerBtnStop]} onPress={handleStopTimer} activeOpacity={0.8}>
                       <Square color={colors.text.secondary} size={16} />
-                      <Text style={[styles.timerBtnText, { color: colors.text.secondary }]}>
-                        중단
-                      </Text>
+                      <Text style={[styles.timerBtnText, { color: colors.text.secondary }]}>중단</Text>
                     </TouchableOpacity>
                   </>
                 ) : null}
                 {isPaused ? (
                   <>
-                    <TouchableOpacity
-                      style={[styles.timerBtn, styles.timerBtnPrimary]}
-                      onPress={resume}
-                      activeOpacity={0.8}
-                    >
+                    <TouchableOpacity style={[styles.timerBtn, styles.timerBtnPrimary]} onPress={resume} activeOpacity={0.8}>
                       <Play color={colors.white} size={18} fill={colors.white} />
                       <Text style={styles.timerBtnText}>재개</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.timerBtn, styles.timerBtnStop]}
-                      onPress={handleStopTimer}
-                      activeOpacity={0.8}
-                    >
+                    <TouchableOpacity style={[styles.timerBtn, styles.timerBtnStop]} onPress={handleStopTimer} activeOpacity={0.8}>
                       <Square color={colors.text.secondary} size={16} />
-                      <Text style={[styles.timerBtnText, { color: colors.text.secondary }]}>
-                        중단
-                      </Text>
+                      <Text style={[styles.timerBtnText, { color: colors.text.secondary }]}>중단</Text>
                     </TouchableOpacity>
                   </>
                 ) : null}
               </View>
-              {elapsed > 0 && !isRunning && !isPaused ? (
-                <Text style={styles.elapsedHint}>기록된 시간: {formatDuration(elapsed)}</Text>
-              ) : null}
+              {elapsed > 0 && !isRunning && !isPaused ? <Text style={styles.elapsedHint}>기록된 시간: {formatDuration(elapsed)}</Text> : null}
             </View>
           </View>
         ) : null}
 
         {/* 슬라이더 / 직접입력 모드 */}
-        {(isDirectInput || isEditMode) ? (
+        {isDirectInput || isEditMode ? (
           <View style={styles.section}>
             {/* 시작 시간 */}
             <Text style={styles.sectionTitle}>시작 시간</Text>
-            <TouchableOpacity
-              style={styles.timeButton}
-              onPress={() => setShowTimePicker(true)}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity style={styles.timeButton} onPress={() => setShowTimePicker(true)} activeOpacity={0.8}>
               <Text style={styles.timeButtonText}>
                 {startTime.toLocaleTimeString('ko-KR', {
                   hour: '2-digit',
@@ -378,9 +309,10 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
                 onChange={setDurationMin}
                 formatLabel={formatDurationMin}
                 formatTickLabel={(v) => {
-                  if (v === 0) return '0';
-                  if (v % 60 === 0) return `${v / 60}h`;
-                  if (v % 30 === 0) return `${v}m`;
+                  if (v === 0) return '0분';
+                  if (v > 60) return `${Math.floor(v / 60)}시간` + (v % 60 > 0 ? ` ${v % 60}분` : '');
+                  if (v % 60 === 0) return `${v / 60}시간`;
+                  if (v % 5 === 0) return `${v}분`;
                   return '';
                 }}
                 unit="분"
@@ -403,7 +335,7 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
                 step={10}
                 onChange={setAmountValue}
                 formatLabel={formatAmountMl}
-                formatTickLabel={(v) => v === 0 ? '0' : v % 100 === 0 ? `${v}` : v % 50 === 0 ? `${v}` : ''}
+                formatTickLabel={(v) => (v === 0 ? '0ml' : v % 100 === 0 ? `${v}ml` : v % 50 === 0 ? `${v}ml` : '')}
                 unit="ml"
                 majorEvery={5}
                 color={NURSING_COLOR}
@@ -417,20 +349,9 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
           <Text style={styles.sectionTitle}>빠른 메모</Text>
           <View style={styles.chipRow}>
             {MEMO_CHIPS.map((memo) => (
-              <Chip
-                key={memo}
-                label={memo}
-                selected={selectedMemos.includes(memo)}
-                onPress={() => toggleMemo(memo)}
-                color={NURSING_COLOR}
-              />
+              <Chip key={memo} label={memo} selected={selectedMemos.includes(memo)} onPress={() => toggleMemo(memo)} color={NURSING_COLOR} />
             ))}
-            <Chip
-              label="+ 직접입력"
-              selected={showCustomInput}
-              onPress={() => setShowCustomInput((v) => !v)}
-              color={colors.text.secondary}
-            />
+            <Chip label="+ 직접입력" selected={showCustomInput} onPress={() => setShowCustomInput((v) => !v)} color={colors.text.secondary} />
           </View>
           {showCustomInput ? (
             <TextInput
@@ -448,30 +369,19 @@ export const FeedingForm = ({ onSaveSuccess, initialRecord, onDelete }: FeedingF
         <View style={styles.saveArea}>
           {isEditMode ? (
             <View style={styles.editButtons}>
-              <TouchableOpacity
-                style={styles.deleteBtn}
-                onPress={handleDelete}
-                activeOpacity={0.8}
-                disabled={isSaving}
-              >
+              <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} activeOpacity={0.8} disabled={isSaving}>
                 <Trash2 size={18} color={colors.error} />
                 <Text style={styles.deleteBtnText}>삭제</Text>
               </TouchableOpacity>
               <View style={styles.editSaveBtn}>
-                <SaveButton
-                  onPress={handleSave}
-                  isLoading={isSaving}
-                  color={NURSING_COLOR}
-                  label="수정 저장"
-                />
+                <SaveButton onPress={handleSave} isLoading={isSaving} color={NURSING_COLOR} label="수정 저장" />
               </View>
             </View>
           ) : (
             <SaveButton onPress={handleSave} isLoading={isSaving} color={NURSING_COLOR} />
           )}
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </ScrollView>
   );
 };
 
@@ -574,8 +484,9 @@ const styles = StyleSheet.create({
     ...shadows.card,
   },
   timeButtonText: {
-    ...typography.h2,
     fontSize: 24,
+    fontWeight: '600' as const,
+    lineHeight: 32,
     color: colors.activity.nursing,
   },
   timeButtonLabel: {

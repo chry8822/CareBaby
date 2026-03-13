@@ -20,6 +20,7 @@ interface AuthState {
   signUpWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
   fetchProfile: () => Promise<void>;
+  updateProfile: (updates: { display_name?: string; parent_role?: string; avatar_url?: string | null }) => Promise<void>;
   initialize: () => () => void;
 }
 
@@ -117,6 +118,27 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {
       set({ profile: null });
     }
+  },
+
+  updateProfile: async (updates) => {
+    const { user } = get();
+    if (!user) throw new Error('Not authenticated');
+
+    console.log('[updateProfile] 시작:', JSON.stringify(updates));
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', user.id)
+      .select();
+
+    console.log('[updateProfile] 결과 data:', data, 'error:', error);
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      throw new Error('profiles UPDATE가 적용되지 않았습니다. RLS UPDATE 정책을 확인하세요.');
+    }
+    set({ profile: data[0] as Profile });
   },
 
   initialize: () => {

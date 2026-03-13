@@ -1,16 +1,16 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
-import type { Baby, BabyGender, Caretaker } from '../types/database';
+import type { Baby, BabyGender, CaretakerWithProfile } from '../types/database';
 
 interface BabyState {
   babies: Baby[];
   currentBaby: Baby | null;
-  caretakers: Caretaker[];
+  caretakers: CaretakerWithProfile[];
   isLoading: boolean;
   fetchBabies: () => Promise<void>;
   setCurrentBaby: (baby: Baby) => void;
   createBaby: (name: string, birthDate: string, gender: BabyGender) => Promise<Baby>;
-  updateBaby: (babyId: string, name: string, birthDate: string, gender: BabyGender) => Promise<Baby>;
+  updateBaby: (babyId: string, name: string, birthDate: string, gender: BabyGender, avatarUrl?: string | null) => Promise<Baby>;
   generateInviteCode: (babyId: string) => Promise<string>;
   joinByInviteCode: (code: string) => Promise<{ success: boolean; baby_id: string | null }>;
   fetchCaretakers: (babyId: string) => Promise<void>;
@@ -41,9 +41,13 @@ export const useBabyStore = create<BabyState>((set, get) => ({
 
       set({ babies });
 
+      // currentBaby를 항상 최신 데이터로 동기화
       const { currentBaby } = get();
       if (!currentBaby && babies.length > 0) {
         set({ currentBaby: babies[0] });
+      } else if (currentBaby) {
+        const refreshed = babies.find((b) => b.id === currentBaby.id);
+        if (refreshed) set({ currentBaby: refreshed });
       }
     } finally {
       set({ isLoading: false });
@@ -76,25 +80,43 @@ export const useBabyStore = create<BabyState>((set, get) => ({
     }
   },
 
-  updateBaby: async (babyId: string, name: string, birthDate: string, gender: BabyGender) => {
+  updateBaby: async (babyId: string, name: string, birthDate: string, gender: BabyGender, avatarUrl?: string | null) => {
     set({ isLoading: true });
     try {
-      const { data: baby, error } = await supabase
+      // 기본 필드 업데이트
+      const { error: baseError } = await supabase
         .from('babies')
         .update({ name, birth_date: birthDate, gender })
-        .eq('id', babyId)
-        .select()
-        .single();
+        .eq('id', babyId);
 
-      if (error) throw error;
+      if (baseError) throw baseError;
 
-      const updatedBabies = get().babies.map((b) => (b.id === babyId ? baby : b));
+      // avatar_url은 RLS 우회를 위해 SECURITY DEFINER RPC로 업데이트
+      if (avatarUrl !== undefined) {
+        const { error: avatarError } = await supabase
+          .rpc('update_baby_avatar', { p_baby_id: babyId, p_avatar_url: avatarUrl });
+        if (avatarError) throw avatarError;
+      }
+
+      const error = null;
+
+      // SELECT RLS 무관하게 스토어를 직접 패치
+      const existing = get().babies.find((b) => b.id === babyId);
+      const patched: Baby = {
+        ...(existing ?? ({ id: babyId } as Baby)),
+        name,
+        birth_date: birthDate,
+        gender,
+        ...(avatarUrl !== undefined ? { avatar_url: avatarUrl } : {}),
+      };
+
+      const updatedBabies = get().babies.map((b) => (b.id === babyId ? patched : b));
       const currentBaby = get().currentBaby;
       set({
         babies: updatedBabies,
-        currentBaby: currentBaby?.id === babyId ? baby : currentBaby,
+        currentBaby: currentBaby?.id === babyId ? patched : currentBaby,
       });
-      return baby;
+      return patched;
     } finally {
       set({ isLoading: false });
     }
@@ -119,11 +141,11 @@ export const useBabyStore = create<BabyState>((set, get) => ({
     try {
       const { data, error } = await supabase
         .from('caretakers')
-        .select('*')
+        .select('*, profiles(display_name, avatar_url, parent_role)')
         .eq('baby_id', babyId);
 
       if (error) throw error;
-      set({ caretakers: data });
+      set({ caretakers: data as CaretakerWithProfile[] });
     } catch {
       set({ caretakers: [] });
     }

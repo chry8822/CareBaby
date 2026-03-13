@@ -1,36 +1,52 @@
+import { useState } from 'react';
 import { View, Text, Image, StyleSheet, ScrollView } from 'react-native';
 import { BarChart2 } from 'lucide-react-native';
+import { useBabyStore } from '../../stores/babyStore';
 import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { BabySwitcherSheet } from '../../components/ui/BabySwitcherSheet';
 
 const StatsScreen = () => {
+  const { currentBaby, babies, setCurrentBaby } = useBabyStore();
+  const [switcherVisible, setSwitcherVisible] = useState(false);
+  const canSwitch = babies.length > 1;
+
+  const subtitle = currentBaby ? currentBaby.name : '패턴 분석 및 인사이트';
+
   return (
     <View style={styles.safe}>
-      <PageHeader title="통계" subtitle="패턴 분석 및 인사이트" />
+      <PageHeader
+        title="통계"
+        subtitle={subtitle}
+        onSubtitlePress={canSwitch ? () => setSwitcherVisible(true) : undefined}
+      />
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.comingSoonCard}>
-          <Image
-            source={require('../../assets/images/stats-coming-soon.png')}
-            style={styles.illustration}
-            resizeMode="contain"
-          />
+          <Image source={require('../../assets/images/stats-coming-soon.png')} style={styles.illustration} resizeMode="contain" />
           <View style={styles.iconWrapper}>
             <BarChart2 color={colors.activity.growth} size={26} />
           </View>
           <Text style={styles.comingSoonTitle}>AI 패턴 분석</Text>
-          <Text style={styles.comingSoonDesc}>
-            수유·수면 패턴을 AI가 분석해{'\n'}맞춤 인사이트를 제공할 예정이에요.
-          </Text>
+          <Text style={styles.comingSoonDesc}>수유·수면 패턴을 AI가 분석해{'\n'}맞춤 인사이트를 제공할 예정이에요.</Text>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>준비 중</Text>
           </View>
         </View>
       </ScrollView>
+
+      {canSwitch && currentBaby && (
+        <BabySwitcherSheet
+          visible={switcherVisible}
+          onClose={() => setSwitcherVisible(false)}
+          babies={babies}
+          currentBaby={currentBaby}
+          onSelect={(baby) => {
+            setCurrentBaby(baby);
+            setSwitcherVisible(false);
+          }}
+        />
+      )}
     </View>
   );
 };

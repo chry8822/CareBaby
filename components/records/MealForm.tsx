@@ -1,14 +1,5 @@
 import { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-  KeyboardAvoidingView,
-} from 'react-native';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
 import { Calendar, Trash2 } from 'lucide-react-native';
 import { WheelTimePicker } from '../ui/WheelTimePicker';
 import { RulerInput } from '../ui/RulerInput';
@@ -56,9 +47,7 @@ export const MealForm = ({ onSaveSuccess, initialRecord, onDelete }: MealFormPro
   const isEditMode = !!initialRecord;
 
   const [mealType, setMealType] = useState<MealType>(initialRecord?.meal_type ?? 'puree');
-  const [occurredAt, setOccurredAt] = useState(
-    initialRecord ? new Date(initialRecord.occurred_at) : new Date(),
-  );
+  const [occurredAt, setOccurredAt] = useState(initialRecord ? new Date(initialRecord.occurred_at) : new Date());
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [amountValue, setAmountValue] = useState<number>(initialRecord?.amount_ml ?? 0);
   const [reaction, setReaction] = useState<MealReaction | null>(initialRecord?.reaction ?? null);
@@ -68,9 +57,7 @@ export const MealForm = ({ onSaveSuccess, initialRecord, onDelete }: MealFormPro
   const [isSaving, setIsSaving] = useState(false);
 
   const toggleMemo = useCallback((memo: string) => {
-    setSelectedMemos((prev) =>
-      prev.includes(memo) ? prev.filter((m) => m !== memo) : [...prev, memo],
-    );
+    setSelectedMemos((prev) => (prev.includes(memo) ? prev.filter((m) => m !== memo) : [...prev, memo]));
   }, []);
 
   const handleTimeConfirm = (date: Date) => {
@@ -123,8 +110,7 @@ export const MealForm = ({ onSaveSuccess, initialRecord, onDelete }: MealFormPro
     } catch {
       showModal({
         title: isEditMode ? '수정 실패' : '저장 실패',
-        message:
-          '기록 저장에 실패했어요.\n\n⚠️ Supabase에 meals 테이블이 없을 수 있어요. DB 마이그레이션을 확인하세요.',
+        message: '기록 저장에 실패했어요.\n\n⚠️ Supabase에 meals 테이블이 없을 수 있어요. DB 마이그레이션을 확인하세요.',
         primaryAction: { label: '확인', onPress: hideModal },
       });
     } finally {
@@ -173,29 +159,14 @@ export const MealForm = ({ onSaveSuccess, initialRecord, onDelete }: MealFormPro
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
-    >
-      <ScrollView
-        style={styles.flex}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
+    <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}>
+      <ScrollView style={styles.flex} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         {/* 이유식 종류 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>이유식 종류</Text>
           <View style={styles.chipRow}>
             {MEAL_TYPES.map((mt) => (
-              <Chip
-                key={mt.key}
-                label={mt.label}
-                selected={mealType === mt.key}
-                onPress={() => setMealType(mt.key)}
-                color={MEAL_COLOR}
-              />
+              <Chip key={mt.key} label={mt.label} selected={mealType === mt.key} onPress={() => setMealType(mt.key)} color={MEAL_COLOR} />
             ))}
           </View>
         </View>
@@ -203,11 +174,7 @@ export const MealForm = ({ onSaveSuccess, initialRecord, onDelete }: MealFormPro
         {/* 식사 시간 */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>식사 시간</Text>
-          <TouchableOpacity
-            style={styles.timeButton}
-            onPress={() => setShowTimePicker(true)}
-            activeOpacity={0.8}
-          >
+          <TouchableOpacity style={styles.timeButton} onPress={() => setShowTimePicker(true)} activeOpacity={0.8}>
             <Calendar size={18} color={MEAL_COLOR} />
             <Text style={styles.timeButtonText}>{formatTime(occurredAt)}</Text>
             <Text style={styles.timeButtonLabel}>탭하여 변경</Text>
@@ -233,7 +200,7 @@ export const MealForm = ({ onSaveSuccess, initialRecord, onDelete }: MealFormPro
               step={10}
               onChange={setAmountValue}
               formatLabel={formatAmountMl}
-              formatTickLabel={(v) => v === 0 ? '0' : v % 100 === 0 ? `${v}` : v % 50 === 0 ? `${v}` : ''}
+              formatTickLabel={(v) => (v === 0 ? '0ml' : v % 100 === 0 ? `${v}ml` : v % 50 === 0 ? `${v}ml` : '')}
               unit="ml"
               majorEvery={5}
               color={MEAL_COLOR}
@@ -262,20 +229,9 @@ export const MealForm = ({ onSaveSuccess, initialRecord, onDelete }: MealFormPro
           <Text style={styles.sectionTitle}>빠른 메모</Text>
           <View style={styles.chipRow}>
             {MEMO_CHIPS.map((memo) => (
-              <Chip
-                key={memo}
-                label={memo}
-                selected={selectedMemos.includes(memo)}
-                onPress={() => toggleMemo(memo)}
-                color={MEAL_COLOR}
-              />
+              <Chip key={memo} label={memo} selected={selectedMemos.includes(memo)} onPress={() => toggleMemo(memo)} color={MEAL_COLOR} />
             ))}
-            <Chip
-              label="+ 직접입력"
-              selected={showCustomInput}
-              onPress={() => setShowCustomInput((v) => !v)}
-              color={colors.text.secondary}
-            />
+            <Chip label="+ 직접입력" selected={showCustomInput} onPress={() => setShowCustomInput((v) => !v)} color={colors.text.secondary} />
           </View>
           {showCustomInput ? (
             <TextInput
@@ -292,22 +248,12 @@ export const MealForm = ({ onSaveSuccess, initialRecord, onDelete }: MealFormPro
         <View style={styles.saveArea}>
           {isEditMode ? (
             <View style={styles.editButtons}>
-              <TouchableOpacity
-                style={styles.deleteBtn}
-                onPress={handleDelete}
-                activeOpacity={0.8}
-                disabled={isSaving}
-              >
+              <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} activeOpacity={0.8} disabled={isSaving}>
                 <Trash2 size={18} color={colors.error} />
                 <Text style={styles.deleteBtnText}>삭제</Text>
               </TouchableOpacity>
               <View style={styles.editSaveBtn}>
-                <SaveButton
-                  onPress={handleSave}
-                  isLoading={isSaving}
-                  color={MEAL_COLOR}
-                  label="수정 저장"
-                />
+                <SaveButton onPress={handleSave} isLoading={isSaving} color={MEAL_COLOR} label="수정 저장" />
               </View>
             </View>
           ) : (

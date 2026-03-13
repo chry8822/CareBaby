@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { WheelTimePicker } from '../ui/WheelTimePicker';
+import { ClearableInput } from '../ui/ClearableInput';
 import { useHealthStore } from '../../stores/healthStore';
 import { useAuthStore } from '../../stores/authStore';
 import { colors, typography, spacing, borderRadius } from '../../constants/theme';
@@ -104,26 +105,26 @@ export const HospitalForm = ({ babyId, onSaved, initialData }: Props) => {
           {/* 병원 이름 */}
           <View style={styles.section}>
             <Text style={styles.label}>병원 이름</Text>
-            <TextInput
+            <ClearableInput
               style={styles.input}
               value={clinicName}
               onChangeText={setClinicName}
               placeholder="병원·의원 이름 입력"
-              placeholderTextColor={colors.text.secondary}
               maxLength={50}
+              returnKeyType="done"
             />
           </View>
 
           {/* 방문 사유 */}
           <View style={styles.section}>
             <Text style={styles.label}>방문 사유 (선택)</Text>
-            <TextInput
+            <ClearableInput
               style={[styles.input, { marginBottom: spacing.sm }]}
               value={reason}
               onChangeText={setReason}
               placeholder="직접 입력"
-              placeholderTextColor={colors.text.secondary}
               maxLength={50}
+              returnKeyType="done"
             />
             <View style={styles.chipRow}>
               {VISIT_REASONS.map((r) => (

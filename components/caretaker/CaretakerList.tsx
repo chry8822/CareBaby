@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { User, Trash2 } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useBabyStore } from '../../stores/babyStore';
@@ -6,11 +6,18 @@ import { useAuthStore } from '../../stores/authStore';
 import { useUIStore } from '../../stores/uiStore';
 import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
 import { useState } from 'react';
-import type { Caretaker } from '../../types/database';
+import type { CaretakerWithProfile } from '../../types/database';
 
 const ROLE_LABEL: Record<string, string> = {
-  owner: '방장',
-  caretaker: '양육자',
+  owner: '주 양육자',
+  caretaker: '공동 양육자',
+};
+
+const PARENT_ROLE_LABEL: Record<string, string> = {
+  mom: '엄마',
+  dad: '아빠',
+  grandparent: '조부모',
+  other: '기타',
 };
 
 const formatJoinedAt = (dateStr: string): string => {
@@ -24,14 +31,14 @@ interface CaretakerListProps {
 
 export const CaretakerList = ({ babyId }: CaretakerListProps) => {
   const { caretakers, fetchCaretakers } = useBabyStore();
-  const { user } = useAuthStore();
+  const { user, profile } = useAuthStore();
   const { showModal, hideModal, showToast } = useUIStore();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const myCaretaker = caretakers.find((c) => c.profile_id === user?.id);
   const isOwner = myCaretaker?.role === 'owner';
 
-  const handleDelete = (target: Caretaker) => {
+  const handleDelete = (target: CaretakerWithProfile) => {
     showModal({
       title: '양육자 삭제',
       message: `${target.profile_id === user?.id ? '본인을' : '이 양육자를'} 목록에서 제거하시겠어요?`,
@@ -81,18 +88,50 @@ export const CaretakerList = ({ babyId }: CaretakerListProps) => {
         const canDelete = isOwner && !isMe;
         const isDeleting = deletingId === ct.id;
 
+        // 이름: 본인은 authStore profile 우선, 나머지는 조인된 profiles 사용
+        const displayName = isMe
+          ? (profile?.display_name ?? ct.profiles?.display_name ?? null)
+          : ct.profiles?.display_name ?? null;
+
+        const avatarUrl = isMe
+          ? (profile?.avatar_url ?? ct.profiles?.avatar_url ?? null)
+          : ct.profiles?.avatar_url ?? null;
+
+        const parentRole = isMe
+          ? (profile?.parent_role ?? ct.profiles?.parent_role ?? null)
+          : ct.profiles?.parent_role ?? null;
+
+        // 이름 표시: "이름(부모역할)" 또는 이름만, 둘 다 없으면 기본값
+        const nameLabel = (() => {
+          const name = displayName ?? (isMe ? '나' : '양육자');
+          const role = parentRole ? PARENT_ROLE_LABEL[parentRole] : null;
+          return role ? `${name}(${role})` : name;
+        })();
+
         return (
           <View key={ct.id}>
             {index > 0 && <View style={styles.divider} />}
             <View style={styles.row}>
-              <View style={styles.avatar}>
-                <User color={colors.white} size={16} strokeWidth={1.8} />
+              {/* 아바타 */}
+              <View style={styles.avatarWrap}>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatarImage} resizeMode="cover" />
+                ) : displayName ? (
+                  <View style={[styles.avatarInitial, isMe && styles.avatarInitialMe]}>
+                    <Text style={styles.avatarInitialText}>
+                      {displayName.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={[styles.avatarIcon, isMe && styles.avatarInitialMe]}>
+                    <User color={colors.white} size={16} strokeWidth={1.8} />
+                  </View>
+                )}
               </View>
+
               <View style={styles.info}>
                 <View style={styles.nameRow}>
-                  <Text style={styles.nameText}>
-                    {isMe ? '나' : '양육자'}
-                  </Text>
+                  <Text style={styles.nameText}>{nameLabel}</Text>
                   <View style={[
                     styles.roleBadge,
                     ct.role === 'owner' && styles.roleBadgeOwner,
@@ -107,6 +146,7 @@ export const CaretakerList = ({ babyId }: CaretakerListProps) => {
                 </View>
                 <Text style={styles.joinedText}>{formatJoinedAt(ct.joined_at)}</Text>
               </View>
+
               {canDelete && (
                 <TouchableOpacity
                   onPress={() => handleDelete(ct)}
@@ -150,11 +190,38 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     gap: spacing.md,
   },
-  avatar: {
+  avatarWrap: {
     width: 36,
     height: 36,
     borderRadius: 18,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  avatarInitial: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.text.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitialMe: {
     backgroundColor: colors.accent,
+  },
+  avatarInitialText: {
+    color: colors.white,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  avatarIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.text.secondary,
     alignItems: 'center',
     justifyContent: 'center',
   },

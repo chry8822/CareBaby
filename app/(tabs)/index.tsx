@@ -1,17 +1,19 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useBabyStore } from '../../stores/babyStore';
 import { useHomeData } from '../../hooks/useHomeData';
+import { useMinLoading } from '../../hooks/useMinLoading';
 import { colors } from '../../constants/theme';
 import { BabySetupPrompt } from '../../components/home/BabySetupPrompt';
 import { HomeEmpty } from '../../components/home/HomeEmpty';
 import { HomeDashboard } from '../../components/home/HomeDashboard';
 import { QuickRecordSheet } from '../../components/home/QuickRecordSheet';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
 import type { QuickCategory } from '../../components/home/QuickRecordSheet';
 
 const HomeScreen = () => {
-  const { currentBaby, fetchBabies, isLoading: babyLoading } = useBabyStore();
+  const { currentBaby, babies, setCurrentBaby, fetchBabies, isLoading: babyLoading } = useBabyStore();
   const homeData = useHomeData(currentBaby?.id ?? null);
 
   const [sheetVisible, setSheetVisible] = useState(false);
@@ -32,7 +34,7 @@ const HomeScreen = () => {
       return () => {
         closeRowsRef.current?.();
       };
-    }, [])
+    }, []),
   );
 
   const handleRegisterPress = useCallback(() => {
@@ -42,7 +44,7 @@ const HomeScreen = () => {
   }, []);
 
   const handleQuickAction = useCallback((category: QuickCategory) => {
-    closeRowsRef.current?.();   // 열린 스와이프 row 먼저 닫기
+    closeRowsRef.current?.(); // 열린 스와이프 row 먼저 닫기
     setSelectedCategory(category);
     setSheetVisible(true);
   }, []);
@@ -56,12 +58,14 @@ const HomeScreen = () => {
     homeData.refresh();
   }, [homeData]);
 
-  if (babyLoading) {
+  // ※ Rules of Hooks: early return 전에 모든 훅 호출
+  const isInitialLoading = homeData.isLoading && homeData.timeline.length === 0;
+  const showLoading = useMinLoading(isInitialLoading);
+
+  if (babyLoading && !currentBaby) {
     return (
       <View style={styles.safe}>
-        <View style={styles.center}>
-          <ActivityIndicator color={colors.accent} size="large" />
-        </View>
+        <LoadingScreen message="아기 정보를 불러오는 중..." />
       </View>
     );
   }
@@ -78,27 +82,23 @@ const HomeScreen = () => {
 
   return (
     <View style={styles.safe}>
-      {hasTodayRecords ? (
+      {showLoading ? (
+        <LoadingScreen message={`${currentBaby.name} 기록 불러오는 중...`} />
+      ) : hasTodayRecords ? (
         <HomeDashboard
           baby={currentBaby}
+          babies={babies}
+          onSwitchBaby={setCurrentBaby}
           {...homeData}
           onQuickAction={handleQuickAction}
           closeRowsRef={closeRowsRef}
         />
       ) : (
-        <HomeEmpty
-          baby={currentBaby}
-          onQuickAction={handleQuickAction}
-        />
+        <HomeEmpty baby={currentBaby} babies={babies} onSwitchBaby={setCurrentBaby} onQuickAction={handleQuickAction} />
       )}
 
       {/* 빠른기록 바텀시트 */}
-      <QuickRecordSheet
-        visible={sheetVisible}
-        onClose={handleSheetClose}
-        initialCategory={selectedCategory}
-        onSaveSuccess={handleSaveSuccess}
-      />
+      <QuickRecordSheet visible={sheetVisible} onClose={handleSheetClose} initialCategory={selectedCategory} onSaveSuccess={handleSaveSuccess} />
     </View>
   );
 };
@@ -107,11 +107,6 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.bg.primary,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });
 

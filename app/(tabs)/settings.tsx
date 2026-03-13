@@ -1,6 +1,6 @@
-import { useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { LogOut, User, Bell, Shield, Users, ChevronRight, Baby, Edit3 } from 'lucide-react-native';
+import { useEffect, useRef, useCallback, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Image } from 'react-native';
+import { LogOut, User, Bell, Shield, Users, ChevronRight, Baby, Edit3, Plus } from 'lucide-react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '../../stores/authStore';
 import { useBabyStore } from '../../stores/babyStore';
@@ -10,6 +10,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { InviteCodeCard } from '../../components/caretaker/InviteCodeCard';
 import { JoinByCodeForm } from '../../components/caretaker/JoinByCodeForm';
 import { CaretakerList } from '../../components/caretaker/CaretakerList';
+import { ProfileEditSheet } from '../../components/settings/ProfileEditSheet';
 
 interface SettingsRowProps {
   icon: React.ReactNode;
@@ -28,10 +29,19 @@ const SettingsRow = ({ icon, label, onPress, danger = false }: SettingsRowProps)
   </TouchableOpacity>
 );
 
+const PARENT_ROLE_LABELS: Record<string, string> = {
+  mom: '엄마',
+  dad: '아빠',
+  grandparent: '조부모',
+  other: '기타',
+};
+
 const SettingsScreen = () => {
   const { profile, signOut } = useAuthStore();
-  const { currentBaby, caretakers, fetchCaretakers } = useBabyStore();
+  const { currentBaby, babies, setCurrentBaby, caretakers, fetchCaretakers } = useBabyStore();
   const { showModal, hideModal, showToast } = useUIStore();
+
+  const [profileEditVisible, setProfileEditVisible] = useState(false);
 
   const myCaretaker = caretakers.find((c) => c.profile_id === profile?.id);
   const isOwner = myCaretaker?.role === 'owner';
@@ -90,15 +100,33 @@ const SettingsScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* 프로필 카드 */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <User color={colors.white} size={24} />
+        <TouchableOpacity
+          style={styles.profileCard}
+          onPress={() => setProfileEditVisible(true)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.avatarWrapper}>
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} resizeMode="cover" />
+            ) : (
+              <View style={styles.avatar}>
+                <User color={colors.white} size={24} />
+              </View>
+            )}
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName}>{profile?.display_name ?? '사용자'}</Text>
-            <Text style={styles.profileSub}>개인 계정</Text>
+            <Text style={styles.profileSub}>
+              {profile?.parent_role ? PARENT_ROLE_LABELS[profile.parent_role] ?? '개인 계정' : '개인 계정'}
+            </Text>
           </View>
-        </View>
+          <Edit3 color={colors.text.secondary} size={16} strokeWidth={1.8} />
+        </TouchableOpacity>
+
+        <ProfileEditSheet
+          visible={profileEditVisible}
+          onClose={() => setProfileEditVisible(false)}
+        />
 
         {/* 아기 정보 섹션 */}
         <View style={styles.section}>
@@ -107,33 +135,70 @@ const SettingsScreen = () => {
             <Text style={styles.sectionLabel}>아기 정보</Text>
           </View>
 
-          {currentBaby ? (
-            <TouchableOpacity
-              style={[styles.card, styles.babyCard]}
-              onPress={() => navigateToBabySetup('edit')}
-              activeOpacity={0.8}
-            >
-              <View style={styles.babyCardLeft}>
-                <View style={styles.babyAvatar}>
-                  <Text style={styles.babyAvatarEmoji}>
-                    {currentBaby.gender === 'male' ? '👦' : currentBaby.gender === 'female' ? '👧' : '🍼'}
-                  </Text>
-                </View>
-                <View>
-                  <Text style={styles.babyName}>{currentBaby.name}</Text>
-                  <Text style={styles.babySub}>
-                    {currentBaby.birth_date
-                      ? new Date(currentBaby.birth_date).toLocaleDateString('ko-KR', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })
-                      : '생년월일 미입력'}
-                  </Text>
-                </View>
-              </View>
-              <Edit3 color={colors.text.secondary} size={16} strokeWidth={1.8} />
-            </TouchableOpacity>
+          {babies.length > 0 ? (
+            <View style={styles.babySection}>
+              {babies.map((baby) => {
+                const isSelected = currentBaby?.id === baby.id;
+                return (
+                  <TouchableOpacity
+                    key={baby.id}
+                    style={[styles.card, styles.babyCard, isSelected && styles.babyCardActive]}
+                    onPress={() => {
+                      if (!isSelected) {
+                        setCurrentBaby(baby);
+                        showToast(`${baby.name}으로 전환 완료!`, 'success');
+                      }
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={styles.babyCardLeft}>
+                      <View style={styles.babyAvatar}>
+                        {baby.avatar_url ? (
+                          <Image source={{ uri: baby.avatar_url }} style={styles.babyAvatarImage} resizeMode="cover" />
+                        ) : (
+                          <Text style={styles.babyAvatarEmoji}>
+                            {baby.gender === 'male' ? '👦' : baby.gender === 'female' ? '👧' : '🍼'}
+                          </Text>
+                        )}
+                      </View>
+                      <View>
+                        <Text style={styles.babyName}>{baby.name}</Text>
+                        <Text style={styles.babySub}>
+                          {baby.birth_date
+                            ? new Date(baby.birth_date).toLocaleDateString('ko-KR', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                              })
+                            : '생년월일 미입력'}
+                        </Text>
+                      </View>
+                    </View>
+                    {/* 수정 버튼: 탭 시 해당 아기로 전환 후 수정 페이지로 */}
+                    <TouchableOpacity
+                      style={styles.editBtn}
+                      onPress={() => {
+                        setCurrentBaby(baby);
+                        navigateToBabySetup('edit');
+                      }}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Edit3 color={colors.text.secondary} size={16} strokeWidth={1.8} />
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                );
+              })}
+
+              {/* 아기 추가 버튼 */}
+              <TouchableOpacity
+                style={styles.addBabyBtn}
+                onPress={() => navigateToBabySetup()}
+                activeOpacity={0.7}
+              >
+                <Plus color={colors.accent} size={16} strokeWidth={2} />
+                <Text style={styles.addBabyText}>아기 추가하기</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <TouchableOpacity
               style={[styles.card, styles.babyRegisterCard]}
@@ -234,6 +299,17 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     ...shadows.card,
   },
+  avatarWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.full,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: borderRadius.full,
+  },
   avatar: {
     width: 48,
     height: 48,
@@ -275,6 +351,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: spacing.cardPadding,
   },
+  babyCardActive: {
+    borderWidth: 1.5,
+    borderColor: `${colors.accent}60`,
+  },
+  editBtn: {
+    padding: 4,
+  },
   babyCardLeft: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -291,6 +374,11 @@ const styles = StyleSheet.create({
   babyAvatarEmoji: {
     fontSize: 22,
   },
+  babyAvatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.full,
+  },
   babyName: {
     ...typography.h2,
     color: colors.text.primary,
@@ -299,6 +387,9 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.text.secondary,
     marginTop: 2,
+  },
+  babySection: {
+    gap: spacing.sm,
   },
   babyRegisterCard: {
     flexDirection: 'row',
@@ -309,6 +400,23 @@ const styles = StyleSheet.create({
   babyRegisterText: {
     ...typography.bodySemiBold,
     color: colors.accent,
+  },
+  addBabyBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.md,
+    backgroundColor: colors.bg.elevated,
+    borderRadius: borderRadius.base,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+  },
+  addBabyText: {
+    ...typography.bodySemiBold,
+    color: colors.accent,
+    fontSize: 14,
   },
   caretakerCards: {
     gap: spacing.md,

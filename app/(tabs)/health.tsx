@@ -1,13 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { useMinLoading } from '../../hooks/useMinLoading';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from 'expo-router';
 import { Thermometer, Pill, Hospital, Plus, Trash2, Pencil } from 'lucide-react-native';
@@ -15,13 +8,10 @@ import { useBabyStore } from '../../stores/babyStore';
 import { useHealthStore } from '../../stores/healthStore';
 import { HealthRecordSheet } from '../../components/health/HealthRecordSheet';
 import type { HealthSheetType } from '../../components/health/HealthRecordSheet';
-import {
-  colors,
-  typography,
-  spacing,
-  borderRadius,
-  shadows,
-} from '../../constants/theme';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { BabySwitcherSheet } from '../../components/ui/BabySwitcherSheet';
+import { LoadingScreen } from '../../components/ui/LoadingScreen';
+import { colors, typography, spacing, borderRadius, shadows } from '../../constants/theme';
 import type { Temperature, Medicine, HospitalVisit } from '../../types/database';
 
 type EditingItem = Temperature | Medicine | HospitalVisit | null;
@@ -42,17 +32,7 @@ const formatDate = (iso: string) => {
 
 // ─── 각 섹션 카드 ──────────────────────────────────────────────────────────────
 
-const SectionHeader = ({
-  icon,
-  title,
-  color,
-  onAdd,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  color: string;
-  onAdd: () => void;
-}) => (
+const SectionHeader = ({ icon, title, color, onAdd }: { icon: React.ReactNode; title: string; color: string; onAdd: () => void }) => (
   <View style={styles.sectionHeader}>
     <View style={[styles.sectionIconWrap, { backgroundColor: `${color}18` }]}>{icon}</View>
     <Text style={styles.sectionTitle}>{title}</Text>
@@ -71,17 +51,22 @@ const EmptyRow = ({ color }: { color: string }) => (
 // ─── 메인 화면 ─────────────────────────────────────────────────────────────────
 
 const HealthScreen = () => {
-  const { currentBaby } = useBabyStore();
-  const { temperatures, medicines, hospitalVisits, isLoading, fetchHealthRecords,
-    deleteTemperature, deleteMedicine, deleteHospitalVisit } = useHealthStore();
+  const { currentBaby, babies, setCurrentBaby } = useBabyStore();
+  const { temperatures, medicines, hospitalVisits, isLoading, loadedBabyId, fetchHealthRecords, deleteTemperature, deleteMedicine, deleteHospitalVisit } = useHealthStore();
 
   const [sheet, setSheet] = useState<HealthSheetType | null>(null);
   const [editingItem, setEditingItem] = useState<EditingItem>(null);
+  const [switcherVisible, setSwitcherVisible] = useState(false);
+  const canSwitch = babies.length > 1;
+
+  // 아기가 바뀔 때만 로딩 화면 표시 (기존 데이터가 있으면 스킵)
+  const isBabySwitch = isLoading && loadedBabyId !== currentBaby?.id;
+  const showLoading = useMinLoading(isBabySwitch);
 
   useFocusEffect(
     useCallback(() => {
       if (currentBaby?.id) fetchHealthRecords(currentBaby.id);
-    }, [currentBaby?.id])
+    }, [currentBaby?.id]),
   );
 
   const openAdd = (type: HealthSheetType) => {
@@ -106,7 +91,11 @@ const HealthScreen = () => {
         text: '삭제',
         style: 'destructive',
         onPress: async () => {
-          try { await onConfirm(); } catch { Alert.alert('오류', '삭제에 실패했습니다.'); }
+          try {
+            await onConfirm();
+          } catch {
+            Alert.alert('오류', '삭제에 실패했습니다.');
+          }
         },
       },
     ]);
@@ -121,22 +110,17 @@ const HealthScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      {/* 헤더 */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>건강 기록</Text>
-        <Text style={styles.headerSub}>{currentBaby.name}</Text>
-      </View>
+    <View style={styles.safeArea}>
+      <PageHeader
+        title="건강 기록"
+        subtitle={currentBaby.name}
+        onSubtitlePress={canSwitch ? () => setSwitcherVisible(true) : undefined}
+      />
 
-      {isLoading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={colors.accent} />
-        </View>
+      {showLoading ? (
+        <LoadingScreen message={`${currentBaby.name} 건강 기록 불러오는 중...`} />
       ) : (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           {/* ── 체온 섹션 ── */}
           <View style={[styles.card, shadows.card]}>
             <SectionHeader
@@ -153,23 +137,15 @@ const HealthScreen = () => {
                   <View style={[styles.dot, { backgroundColor: TEMP_COLOR }]} />
                   <View style={styles.rowContent}>
                     <Text style={styles.rowMain}>
-                      <Text style={[styles.rowValue, { color: TEMP_COLOR }]}>
-                        {t.value_celsius.toFixed(1)}°C
-                      </Text>
+                      <Text style={[styles.rowValue, { color: TEMP_COLOR }]}>{t.value_celsius.toFixed(1)}°C</Text>
                     </Text>
                     {t.note ? <Text style={styles.rowSub}>{t.note}</Text> : null}
                     <Text style={styles.rowTime}>{formatDateTime(t.measured_at)}</Text>
                   </View>
-                  <TouchableOpacity
-                    style={styles.actionBtn}
-                    onPress={() => openEdit('temperature', t)}
-                  >
+                  <TouchableOpacity style={styles.actionBtn} onPress={() => openEdit('temperature', t)}>
                     <Pencil color={colors.text.secondary} size={15} strokeWidth={1.8} />
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.actionBtn}
-                    onPress={() => confirmDelete(`${t.value_celsius}°C`, () => deleteTemperature(t.id))}
-                  >
+                  <TouchableOpacity style={styles.actionBtn} onPress={() => confirmDelete(`${t.value_celsius}°C`, () => deleteTemperature(t.id))}>
                     <Trash2 color={colors.text.secondary} size={15} strokeWidth={1.8} />
                   </TouchableOpacity>
                 </View>
@@ -179,12 +155,7 @@ const HealthScreen = () => {
 
           {/* ── 복약 섹션 ── */}
           <View style={[styles.card, shadows.card]}>
-            <SectionHeader
-              icon={<Pill color={MED_COLOR} size={20} strokeWidth={1.8} />}
-              title="복약"
-              color={MED_COLOR}
-              onAdd={() => openAdd('medicine')}
-            />
+            <SectionHeader icon={<Pill color={MED_COLOR} size={20} strokeWidth={1.8} />} title="복약" color={MED_COLOR} onAdd={() => openAdd('medicine')} />
             {medicines.length === 0 ? (
               <EmptyRow color={MED_COLOR} />
             ) : (
@@ -193,24 +164,16 @@ const HealthScreen = () => {
                   <View style={[styles.dot, { backgroundColor: MED_COLOR }]} />
                   <View style={styles.rowContent}>
                     <Text style={styles.rowMain}>
-                      <Text style={[styles.rowValue, { color: MED_COLOR }]}>
-                        {m.medicine_name}
-                      </Text>
-                      {m.dosage ? <Text style={styles.rowUnit}>  {m.dosage}</Text> : null}
+                      <Text style={[styles.rowValue, { color: MED_COLOR }]}>{m.medicine_name}</Text>
+                      {m.dosage ? <Text style={styles.rowUnit}> {m.dosage}</Text> : null}
                     </Text>
                     {m.note ? <Text style={styles.rowSub}>{m.note}</Text> : null}
                     <Text style={styles.rowTime}>{formatDateTime(m.given_at)}</Text>
                   </View>
-                  <TouchableOpacity
-                    style={styles.actionBtn}
-                    onPress={() => openEdit('medicine', m)}
-                  >
+                  <TouchableOpacity style={styles.actionBtn} onPress={() => openEdit('medicine', m)}>
                     <Pencil color={colors.text.secondary} size={15} strokeWidth={1.8} />
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.actionBtn}
-                    onPress={() => confirmDelete(m.medicine_name, () => deleteMedicine(m.id))}
-                  >
+                  <TouchableOpacity style={styles.actionBtn} onPress={() => confirmDelete(m.medicine_name, () => deleteMedicine(m.id))}>
                     <Trash2 color={colors.text.secondary} size={15} strokeWidth={1.8} />
                   </TouchableOpacity>
                 </View>
@@ -234,24 +197,16 @@ const HealthScreen = () => {
                   <View style={[styles.dot, { backgroundColor: HOSP_COLOR }]} />
                   <View style={styles.rowContent}>
                     <Text style={styles.rowMain}>
-                      <Text style={[styles.rowValue, { color: HOSP_COLOR }]}>
-                        {h.clinic_name}
-                      </Text>
-                      {h.reason ? <Text style={styles.rowUnit}>  · {h.reason}</Text> : null}
+                      <Text style={[styles.rowValue, { color: HOSP_COLOR }]}>{h.clinic_name}</Text>
+                      {h.reason ? <Text style={styles.rowUnit}> · {h.reason}</Text> : null}
                     </Text>
                     {h.note ? <Text style={styles.rowSub}>{h.note}</Text> : null}
                     <Text style={styles.rowTime}>{formatDate(h.occurred_at)}</Text>
                   </View>
-                  <TouchableOpacity
-                    style={styles.actionBtn}
-                    onPress={() => openEdit('hospital', h)}
-                  >
+                  <TouchableOpacity style={styles.actionBtn} onPress={() => openEdit('hospital', h)}>
                     <Pencil color={colors.text.secondary} size={15} strokeWidth={1.8} />
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.actionBtn}
-                    onPress={() => confirmDelete(h.clinic_name, () => deleteHospitalVisit(h.id))}
-                  >
+                  <TouchableOpacity style={styles.actionBtn} onPress={() => confirmDelete(h.clinic_name, () => deleteHospitalVisit(h.id))}>
                     <Trash2 color={colors.text.secondary} size={15} strokeWidth={1.8} />
                   </TouchableOpacity>
                 </View>
@@ -270,7 +225,21 @@ const HealthScreen = () => {
         onSaved={() => fetchHealthRecords(currentBaby.id)}
         editingItem={editingItem}
       />
-    </SafeAreaView>
+
+      {/* ── 아기 전환 시트 ── */}
+      {canSwitch && (
+        <BabySwitcherSheet
+          visible={switcherVisible}
+          onClose={() => setSwitcherVisible(false)}
+          babies={babies}
+          currentBaby={currentBaby}
+          onSelect={(baby) => {
+            setCurrentBaby(baby);
+            setSwitcherVisible(false);
+          }}
+        />
+      )}
+    </View>
   );
 };
 
@@ -286,22 +255,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  headerTitle: {
-    ...typography.display,
-    color: colors.text.primary,
-  },
-  headerSub: {
-    ...typography.caption,
-    color: colors.text.secondary,
-    marginTop: 2,
-  },
   scrollContent: {
     paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xl,
     paddingBottom: spacing.xxl,
     gap: spacing.lg,
   },

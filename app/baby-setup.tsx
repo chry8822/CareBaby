@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { useBabyStore } from '../stores/babyStore';
 import { useUIStore } from '../stores/uiStore';
+import { uploadAvatarToStorage } from '../lib/avatarUtils';
+import { AvatarPicker } from '../components/ui/AvatarPicker';
+import { ClearableInput } from '../components/ui/ClearableInput';
 import { DatePickerModal, PickerDate } from '../components/ui/DatePickerModal';
 import { colors, typography, spacing, borderRadius, shadows } from '../constants/theme';
 import type { BabyGender } from '../types/database';
@@ -48,7 +51,7 @@ const parseBirthDate = (dateStr: string): PickerDate => {
 
 const BabySetupScreen = () => {
   const { mode } = useLocalSearchParams<{ mode?: string }>();
-  const { currentBaby, createBaby, updateBaby, isLoading } = useBabyStore();
+  const { currentBaby, createBaby, updateBaby, fetchBabies, isLoading } = useBabyStore();
   const { showToast } = useUIStore();
 
   const isEdit = mode === 'edit' && !!currentBaby;
@@ -62,6 +65,21 @@ const BabySetupScreen = () => {
   );
   const [dateSelected, setDateSelected] = useState(isEdit && !!currentBaby?.birth_date);
   const [pickerVisible, setPickerVisible] = useState(false);
+
+  // 아바타: edit 모드면 기존 url, 신규 등록이면 null (다른 아기 avatar 오염 방지)
+  const [avatarUri, setAvatarUri] = useState<string | null>(isEdit ? (currentBaby?.avatar_url ?? null) : null);
+  const [avatarChanged, setAvatarChanged] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // edit 모드일 때만: store의 avatar_url이 저장 후 갱신되면 동기화
+  useEffect(() => {
+    if (isEdit && !avatarChanged && currentBaby?.avatar_url !== undefined) {
+      setAvatarUri(currentBaby.avatar_url);
+    }
+  }, [isEdit, currentBaby?.avatar_url]);
+
+  const uploadAvatar = (babyId: string, localUri: string): Promise<string> =>
+    uploadAvatarToStorage('baby-avatars', `${babyId}_${Date.now()}`, localUri);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -77,14 +95,28 @@ const BabySetupScreen = () => {
 
     try {
       if (isEdit && currentBaby) {
-        await updateBaby(currentBaby.id, name.trim(), birthDateStr, gender);
+        setIsUploading(avatarChanged);
+        let finalAvatarUrl: string | null | undefined = undefined;
+        if (avatarChanged && avatarUri) {
+          finalAvatarUrl = await uploadAvatar(currentBaby.id, avatarUri);
+        }
+        setIsUploading(false);
+        await updateBaby(currentBaby.id, name.trim(), birthDateStr, gender, finalAvatarUrl);
+        await fetchBabies();
         showToast('아기 정보가 수정되었습니다.', 'success');
         router.back();
       } else {
-        await createBaby(name.trim(), birthDateStr, gender);
+        const baby = await createBaby(name.trim(), birthDateStr, gender);
+        if (avatarChanged && avatarUri && baby) {
+          setIsUploading(true);
+          const avatarUrl = await uploadAvatar(baby.id, avatarUri);
+          setIsUploading(false);
+          await updateBaby(baby.id, name.trim(), birthDateStr, gender, avatarUrl);
+        }
         router.replace('/(tabs)');
       }
     } catch (err) {
+      setIsUploading(false);
       console.error('[BabySetup] 저장 실패:', err);
       showToast(isEdit ? '수정에 실패했습니다.' : '아기 등록에 실패했습니다.', 'error');
     }
@@ -121,10 +153,22 @@ const BabySetupScreen = () => {
             <Text style={styles.pageDesc}>소중한 아기의 정보를 등록해 주세요.</Text>
           )}
 
+          {/* 아바타 사진 */}
+          <View style={styles.avatarWrapper}>
+            <AvatarPicker
+              uri={avatarUri}
+              size={96}
+              onPick={(uri) => {
+                setAvatarUri(uri);
+                setAvatarChanged(true);
+              }}
+            />
+          </View>
+
           {/* 이름 */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>이름</Text>
-            <TextInput
+            <ClearableInput
               style={styles.input}
               value={name}
               onChangeText={setName}
@@ -187,13 +231,16 @@ const BabySetupScreen = () => {
 
           {/* 저장 버튼 */}
           <TouchableOpacity
-            style={[styles.saveBtn, isLoading && styles.saveBtnDisabled]}
+            style={[styles.saveBtn, (isLoading || isUploading) && styles.saveBtnDisabled]}
             onPress={handleSave}
-            disabled={isLoading}
+            disabled={isLoading || isUploading}
             activeOpacity={0.85}
           >
-            {isLoading ? (
-              <ActivityIndicator color={colors.white} />
+            {isLoading || isUploading ? (
+              <View style={styles.saveBtnRow}>
+                <ActivityIndicator color={colors.white} />
+                {isUploading && <Text style={styles.saveBtnText}>  사진 업로드 중...</Text>}
+              </View>
             ) : (
               <Text style={styles.saveBtnText}>{isEdit ? '수정 완료' : '등록하기'}</Text>
             )}
@@ -260,7 +307,11 @@ const styles = StyleSheet.create({
   pageDesc: {
     ...typography.bodyRegular,
     color: colors.text.secondary,
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.xl,
+  },
+  avatarWrapper: {
+    alignSelf: 'center',
+    marginBottom: spacing.xl,
   },
   fieldGroup: {
     marginBottom: spacing.xl,
@@ -333,6 +384,10 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: {
     opacity: 0.6,
+  },
+  saveBtnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   saveBtnText: {
     ...typography.bodySemiBold,

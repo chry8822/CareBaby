@@ -35,12 +35,22 @@ export function formatElapsed(seconds: number): string {
 /**
  * 시간대별 인사말
  */
-export function getGreeting(): string {
+export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night';
+
+export function getTimeOfDay(): TimeOfDay {
   const hour = new Date().getHours();
-  if (hour >= 5 && hour < 12) return '좋은 아침이에요';
-  if (hour >= 12 && hour < 18) return '좋은 오후예요';
-  if (hour >= 18 && hour < 22) return '좋은 저녁이에요';
-  return '늦은 밤이네요';
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 16) return 'afternoon';
+  if (hour >= 16 && hour < 20) return 'evening';
+  return 'night';
+}
+
+export function getGreeting(): string {
+  const tod = getTimeOfDay();
+  if (tod === 'morning') return '좋은 아침이에요!';
+  if (tod === 'afternoon') return '좋은 오후예요!';
+  if (tod === 'evening') return '좋은 저녁이에요!';
+  return '늦은 밤이네요!!';
 }
 
 /**
